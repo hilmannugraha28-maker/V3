@@ -35,10 +35,13 @@ local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai 
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
     ["Axolotl"]        = 10000,  -- tampilkan Axolotl jika harga <= 10000
+    ["Capybara"]       = 200,    -- tampilkan Capybara jika harga <= 200
+    ["Penguin"]        = 500,    -- tampilkan Penguin jika harga <= 500
 
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
 }
+
 
 -- Item yang HANYA ditampilkan jika punya variant/mutasi
 -- (tanpa variant → tidak dikirim ke Discord)
@@ -400,17 +403,10 @@ local function sendToDiscord(entries)
         return aProfit > bProfit
     end)
 
-    entries = filtered
-
-    if #entries == 0 then
-        print("[Discord] Tidak ada listing untuk dikirim.")
-        return
-    end
-
-    -- Pisahkan: yang seller ada di server vs tidak
+    -- Pisahkan filtered: yang seller ada di server vs tidak
     local inServer   = {}
     local offServer  = {}
-    for _, e in ipairs(entries) do
+    for _, e in ipairs(filtered) do
         if e.inServer then
             table.insert(inServer, e)
         else
