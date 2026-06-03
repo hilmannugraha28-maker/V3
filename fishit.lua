@@ -32,7 +32,7 @@ local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai 
 -- Item yang tidak ada di sini tetap pakai aturan price < RAP seperti biasa
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
-    ["Axolotl"]        = 2000,   -- tampilkan Axolotl jika harga <= 2000
+    ["Axolotl"]        = 4000,   -- tampilkan Axolotl jika harga <= 2000
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
 }
