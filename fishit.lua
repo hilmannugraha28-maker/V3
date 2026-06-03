@@ -158,10 +158,27 @@ local function scanAllListings()
     -- Cache untuk item definition
     local itemDefCache = {}
 
+    -- Tier names per itemType (Rod bisa punya nama tier berbeda)
     local tierNames = {
-        [1]="Common", [2]="Uncommon", [3]="Rare",
-        [4]="Epic", [5]="Legendary", [6]="Mythic", [7]="Secret"
+        Fish = {
+            [1]="Common", [2]="Uncommon", [3]="Rare",
+            [4]="Epic",   [5]="Legendary", [6]="Mythic", [7]="Secret"
+        },
+        Rod = {
+            [1]="Common", [2]="Uncommon", [3]="Rare",
+            [4]="Epic",   [5]="Legendary", [6]="Mythic", [7]="Legendary"
+        },
+        -- fallback untuk itemType lain
+        Default = {
+            [1]="Common", [2]="Uncommon", [3]="Rare",
+            [4]="Epic",   [5]="Legendary", [6]="Mythic",
+            [7]="Secret", [8]="Divine",    [9]="Celestial"
+        },
     }
+    local function getTierName(itemType, tier)
+        local map = tierNames[itemType] or tierNames.Default
+        return map[tier] or ("T" .. tostring(tier))
+    end
 
     for userIdStr, playerData in pairs(allData) do
         local userId = tonumber(userIdStr)
@@ -233,6 +250,10 @@ local function scanAllListings()
                 local itemName = (itemDef and itemDef.Data and itemDef.Data.Name)
                     or tostring(itemId)
                 local itemTier = (itemDef and itemDef.Data and itemDef.Data.Tier) or 0
+                -- Coba ambil nama tier langsung dari ItemDef, fallback ke tabel
+                local tierNameStr = (itemDef and itemDef.Data and (
+                    itemDef.Data.TierName or itemDef.Data.Rarity or itemDef.Data.RarityName
+                )) or getTierName(itemType, itemTier)
                 -- Weight dari Metadata (bukan langsung di Item)
                 local meta = itemData.Item.Metadata or {}
                 local itemWeight = meta.Weight or meta.weight
@@ -268,7 +289,7 @@ local function scanAllListings()
                     itemType   = itemType,
                     itemId     = tostring(itemId),
                     tier       = itemTier,
-                    tierName   = tierNames[itemTier] or ("T" .. itemTier),
+                    tierName   = tierNameStr,
                     price      = tonumber(itemData.Price) or 0,
                     rap        = rap,
                     weight     = tostring(itemWeight ~= 0 and itemWeight or ""),
