@@ -542,11 +542,12 @@ local function sendToDiscord(entries)
             return aP > bP
         end)
 
-        -- Ambil 25 teratas saja
+        -- Ambil 15 teratas saja
         local top25 = {}
-        for i = 1, math.min(25, #nonProfit) do
+        for i = 1, math.min(15, #nonProfit) do
             table.insert(top25, nonProfit[i])
         end
+
         print(("[Discord] Kirim %d (dari %d) non-profit ke WEBHOOK_INFO..."):format(#top25, #nonProfit))
         local desc3 = ("Scanner: %s | %d listing | %d players | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #top25, playerCount, joinUrl, tpScript)
         local fields3 = {}
