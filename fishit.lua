@@ -38,7 +38,6 @@ local CUSTOM_FILTERS = {
 -- Item yang TIDAK ingin ditampilkan (diblokir dari Discord)
 local BLOCKED_ITEMS = {
     ["Blob Shark"]             = true,
-    ["Evolved Enchant Stone"]  = true,
     ["Giant Squid"]            = true,
     ["Cryoshade Glider"]       = true,
     ["Gladiator Shark"]        = true,
@@ -60,7 +59,6 @@ local BLOCKED_ITEMS = {
     ["Bonemaw Tyrant"]         = true,
     ["Bone Whale"]             = true,
     ["Bloodmoon Whale"]        = true,
-
 }
 
 
@@ -175,11 +173,19 @@ local function scanAllListings()
         local sellerName
 
         if sellerPlayer then
-            sellerName = sellerPlayer.Name
+            -- Tampilkan DisplayName + @username
+            local displayName = sellerPlayer.DisplayName
+            local userName    = sellerPlayer.Name
+            if displayName ~= userName then
+                sellerName = displayName .. " (@" .. userName .. ")"
+            else
+                sellerName = userName
+            end
         else
             -- Player tidak ada di server ini (listing dari server lain/database)
             sellerName = "ID:" .. userIdStr
         end
+
 
         -- Coba dapatkan nama display dari leaderstats jika tersedia
         if sellerPlayer then
@@ -298,6 +304,17 @@ local function sendToDiscord(entries)
     local filtered = {}
 
     for _, e in ipairs(entries) do
+
+        -- Skip item yang diblokir (case-insensitive)
+        if BLOCKED_ITEMS[e.name] then continue end
+        local nameLower = e.name:lower()
+        local isBlocked = false
+        for blockedName in pairs(BLOCKED_ITEMS) do
+            if nameLower == blockedName:lower() then
+                isBlocked = true; break
+            end
+        end
+        if isBlocked then continue end
 
         -- Cek custom filter dulu (case-insensitive)
         local customMax = nil
@@ -789,4 +806,22 @@ Btn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("[Sniper] GUI loaded — klik ▶ START untuk mulai scan")
+print("[Sniper] GUI loaded — auto start dalam 1s...")
+
+-- AUTO START
+task.delay(1, function()
+    _sniperRunning = true
+    setBtn(true)
+    _sniperThread = task.spawn(function()
+        local ok, err = pcall(runSniper)
+        if not ok then
+            StatusLabel.Text = "❌ Error!"
+            warn("[Sniper] Error: " .. tostring(err))
+        end
+        if _sniperRunning then
+            _sniperRunning = false
+            setBtn(false)
+        end
+    end)
+    print("[Sniper] Auto-start!")
+end)
