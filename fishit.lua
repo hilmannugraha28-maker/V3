@@ -74,7 +74,14 @@ end)({
     "Bloodmoon Whale",       "Classic Glass Octopus", "Ghost Shark",
     "Coral Whale",           "Holiday Turtle Plushie","Fish Fossil",
     "Treasure Crab",         "Violet",                "Aurelion",
+    "Elpirate Gran Maja",    "Shark",                 "Great Whale",
+    "Queen Crab",            "King Crab",             "Worm Fish",
+    "Depthseeker Ray",       "Flame Tyrant",          "Scare",
+    "Runic Enchant Stone",
 })
+
+
+
 
 
 
@@ -329,15 +336,8 @@ local function sendToDiscord(entries)
     for _, e in ipairs(entries) do
 
         -- Skip item yang diblokir (case-insensitive)
-        if BLOCKED_ITEMS[e.name] then continue end
         local nameLower = e.name:lower()
-        local isBlocked = false
-        for blockedName in pairs(BLOCKED_ITEMS) do
-            if nameLower == blockedName:lower() then
-                isBlocked = true; break
-            end
-        end
-        if isBlocked then continue end
+        if BLOCKED_ITEMS[nameLower] then continue end
 
         -- Skip jika item wajib punya variant tapi tidak ada
         if REQUIRE_VARIANT[e.name] or REQUIRE_VARIANT[e.name:lower()] then
@@ -438,19 +438,30 @@ local function sendToDiscord(entries)
         local variantStr = (e.variant and e.variant ~= "") and ("\n✨ Variant: **" .. e.variant .. "**") or ""
 
         local rapLine
+        local profitSign = 0  -- 0 = unknown, 1 = positive, -1 = negative
         if e._filterTag then
             rapLine = ("Filter: harga ≤ %s T"):format(e._filterTag)
+            profitSign = 1
         elseif e.rap and e.rap > 0 then
             local profit = e.rap - e.price
             local pct    = math.floor((e.price / e.rap) * 100)
-            rapLine = ("RAP: **%s T** | Profit: **+%s T** (%d%%)"):format(
-                commas(e.rap), commas(profit), pct)
+            if profit >= 0 then
+                profitSign = 1
+                rapLine = ("RAP: **%s T** | Profit: **+%s T** (%d%%)"):format(
+                    commas(e.rap), commas(profit), pct)
+            else
+                profitSign = -1
+                rapLine = ("RAP: **%s T** | Minus: **-%s T** (%d%%)"):format(
+                    commas(e.rap), commas(math.abs(profit)), pct)
+            end
         else
             rapLine = "RAP: -"
         end
 
+        local icon = profitSign >= 0 and "🔥" or "📉"
+
         return {
-            name  = ("🔥 #%d %s%s"):format(i, e.name, sourceStr),
+            name  = ("%s #%d %s%s"):format(icon, i, e.name, sourceStr),
             value = (
                 "Harga: **%s T**\n" ..
                 "%s" ..
@@ -463,6 +474,7 @@ local function sendToDiscord(entries)
             inline = true,
         }
     end
+
 
     local function sendEmbed(title, color, desc, fieldList, webhookUrl)
         for i = 1, #fieldList, 25 do
