@@ -233,73 +233,19 @@ local function scanAllListings()
                 local itemName = (itemDef and itemDef.Data and itemDef.Data.Name)
                     or tostring(itemId)
                 local itemTier = (itemDef and itemDef.Data and itemDef.Data.Tier) or 0
-                local itemWeight = itemData.Item.Weight or itemData.Item.weight or ""
+                -- Weight dari Metadata (bukan langsung di Item)
+                local meta = itemData.Item.Metadata or {}
+                local itemWeight = meta.Weight or meta.weight
+                    or itemData.Item.Weight or itemData.Item.weight or ""
 
-                -- ── DEBUG: Print semua key di itemData & itemData.Item (hanya 3 item pertama) ──
-                if #entries < 3 then
-                    local function dumpTable(t, prefix)
-                        if type(t) ~= "table" then return end
-                        for k, v in pairs(t) do
-                            if type(v) == "table" then
-                                print(prefix .. tostring(k) .. " = {table}")
-                                dumpTable(v, prefix .. "  ")
-                            else
-                                print(prefix .. tostring(k) .. " = " .. tostring(v))
-                            end
-                        end
-                    end
-                    print("\n[DEBUG] ── itemData ──")
-                    dumpTable(itemData, "  ")
-                    print("[DEBUG] ── itemData.Item ──")
-                    dumpTable(itemData.Item, "  ")
-                    -- Cek juga dari ItemDef jika ada
-                    if itemDef then
-                        print("[DEBUG] ── itemDef keys ──")
-                        dumpTable(itemDef, "  ")
-                    end
-                end
-
-                -- Deteksi Variant/Mutation dari semua kemungkinan key Fish It
+                -- Variant dari Metadata.VariantId (confirmed dari debug)
                 local itemVariant = ""
-                local variantRaw =
-                    itemData.Item.Mutation        -- Fish It mutation
-                    or itemData.Item.MutationId
-                    or itemData.Item.Mutations     -- bisa array
-                    or itemData.Item.Variant
-                    or itemData.Item.VariantId
-                    or itemData.Item.variant
-                    or itemData.Item.mutant
-                    or itemData.Item.Mutant
-                    or itemData.Mutation
-                    or itemData.MutationId
-                    or itemData.Variant
-                    or itemData.VariantId
-
-                if variantRaw then
-                    if type(variantRaw) == "table" then
-                        -- Jika array of mutations, gabungkan semua
-                        local parts = {}
-                        for _, v in pairs(variantRaw) do
-                            if v and v ~= "" and v ~= 0 then
-                                table.insert(parts, tostring(v))
-                            end
-                        end
-                        itemVariant = table.concat(parts, ", ")
-                    elseif variantRaw ~= 0 and variantRaw ~= "" then
-                        -- Coba resolve nama dari ItemDef
-                        if itemDef and itemDef.Mutations then
-                            local m = itemDef.Mutations[variantRaw]
-                                or itemDef.Mutations[tostring(variantRaw)]
-                            itemVariant = (m and (m.Name or m.name)) or tostring(variantRaw)
-                        elseif itemDef and itemDef.Variants then
-                            local v = itemDef.Variants[variantRaw]
-                                or itemDef.Variants[tostring(variantRaw)]
-                            itemVariant = (v and (v.Name or v.name)) or tostring(variantRaw)
-                        else
-                            itemVariant = tostring(variantRaw)
-                        end
-                    end
+                local variantRaw = meta.VariantId or meta.variantId
+                    or meta.Variant or meta.variant
+                if variantRaw and variantRaw ~= "" and variantRaw ~= 0 then
+                    itemVariant = tostring(variantRaw)
                 end
+
 
                 -- Dapatkan RAP dari data replion
                 local rap = nil
@@ -806,27 +752,31 @@ local function runSniper()
                     if not _sniperRunning then return end
                     task.wait(30)
                 else
-                    table.sort(list, function(a, b) return a.players > b.players end)
-                    StatusLabel.Text = ("🔀 Hop → %d players"):format(list[1].players)
-                    for _, srv in ipairs(list) do
-                        if not _sniperRunning then return end
-                        task.wait(HOP_DELAY)
-                        local failed, conn = false, nil
-                        pcall(function()
-                            conn = TeleportService.TeleportInitFailed:Connect(function(p)
-                                if p == lp then failed = true end
-                            end)
-                        end)
-                        local ok = pcall(TeleportService.TeleportToPlaceInstance, TeleportService, placeId, srv.id, lp)
-                        if ok then
-                            task.wait(15)
-                            if conn then pcall(function() conn:Disconnect() end) end
-                            if not failed then return end
-                        end
-                        if conn then pcall(function() conn:Disconnect() end) end
+                    -- Shuffle acak (Fisher-Yates) — tidak fokus ke server penuh saja
+                    for i = #list, 2, -1 do
+                        local j = math.random(1, i)
+                        list[i], list[j] = list[j], list[i]
                     end
-                    task.wait(30)
+                    local picked = list[1]
+                    StatusLabel.Text = ("🔀 Hop random → %d players"):format(picked.players)
+                    print(("[HOP] Pilih server random: %s (%d players)"):format(picked.id:sub(1,8), picked.players))
+
+                    local failed, conn = false, nil
+                    pcall(function()
+                        conn = TeleportService.TeleportInitFailed:Connect(function(p)
+                            if p == lp then failed = true end
+                        end)
+                    end)
+                    local ok = pcall(TeleportService.TeleportToPlaceInstance, TeleportService, placeId, picked.id, lp)
+                    if ok then
+                        task.wait(15)
+                        if conn then pcall(function() conn:Disconnect() end) end
+                        if not failed then return end
+                    end
+                    if conn then pcall(function() conn:Disconnect() end) end
+                    task.wait(5)
                 end
+
             end
         end
 
