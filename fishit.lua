@@ -492,7 +492,7 @@ local function sendToDiscord(entries)
     -- ── Embed 1: Listing profit (in-server) ──
     if #inServer > 0 then
         print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
-        local desc1 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #inServer)
+        local desc1 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #inServer, joinUrl)
         local fields1 = {}
         for i, e in ipairs(inServer) do
             table.insert(fields1, buildField(i, e))
@@ -504,7 +504,7 @@ local function sendToDiscord(entries)
     if #offServer > 0 then
         task.wait(1)
         print(("[Discord] Kirim %d listing (off-server/database)..."):format(#offServer))
-        local desc2 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #offServer)
+        local desc2 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #offServer, joinUrl)
         local fields2 = {}
         for i, e in ipairs(offServer) do
             table.insert(fields2, buildField(i, e))
@@ -527,7 +527,7 @@ local function sendToDiscord(entries)
             table.insert(top25, nonProfit[i])
         end
         print(("[Discord] Kirim %d (dari %d) non-profit ke WEBHOOK_INFO..."):format(#top25, #nonProfit))
-        local desc3 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #top25)
+        local desc3 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #top25, joinUrl)
         local fields3 = {}
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
