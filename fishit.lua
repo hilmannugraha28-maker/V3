@@ -31,9 +31,38 @@ local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
     ["Axolotl"]        = 2000,   -- tampilkan Axolotl jika harga <= 2000
-    -- ["Undead Guitar"] = 5000, -- contoh: Undead Guitar di bawah 5000
-    -- ["Holy Rod"]      = 200,  -- contoh: Holy Rod di bawah 200
+    -- ["Undead Guitar"] = 5000,
+    -- ["Holy Rod"]      = 200,
 }
+
+-- Item yang TIDAK ingin ditampilkan (diblokir dari Discord)
+local BLOCKED_ITEMS = {
+    ["Blob Shark"]             = true,
+    ["Evolved Enchant Stone"]  = true,
+    ["Giant Squid"]            = true,
+    ["Cryoshade Glider"]       = true,
+    ["Gladiator Shark"]        = true,
+    ["Blackhole Sea Dragon"]   = true,
+    ["Skeleton Narwhal"]       = true,
+    ["Bucket Fish"]            = true,
+    ["Neonite Fish"]           = true,
+    ["Fluorivane"]             = true,
+    ["Elshark Gran Maja"]      = true,
+    ["Coney Fish"]             = true,
+    ["Blobby Shieldfish"]      = true,
+    ["Frostbite Leviathan"]    = true,
+    ["Primal Lobster"]         = true,
+    ["Emerald Winter Whale"]   = true,
+    ["Winter Frost Shark"]     = true,
+    ["Strawberry Orca"]        = true,
+    ["1x1x1x1 Comet Shark"]   = true,
+    ["Drip Walrus"]            = true,
+    ["Bonemaw Tyrant"]         = true,
+    ["Bone Whale"]             = true,
+    ["Bloodmoon Whale"]        = true,
+
+}
+
 
 
 
