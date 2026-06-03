@@ -24,6 +24,8 @@ local HOP_DELAY  = 3
 local MIN_PLAYER  = 5     -- min player per server saat hop
 local SNIPE_ONLY  = true  -- hanya kirim listing yang harga < RAP
 local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
+local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai ini
+                          -- set ke 0 untuk tampilkan semua snipe
 
 -- Filter harga manual per item (nama item = harga maksimal yang mau ditampilkan)
 -- Item di sini TIDAK perlu punya RAP — langsung pakai batas harga manual
@@ -35,31 +37,25 @@ local CUSTOM_FILTERS = {
     -- ["Holy Rod"]      = 200,
 }
 
--- Item yang TIDAK ingin ditampilkan (diblokir dari Discord)
-local BLOCKED_ITEMS = {
-    ["Blob Shark"]             = true,
-    ["Giant Squid"]            = true,
-    ["Cryoshade Glider"]       = true,
-    ["Gladiator Shark"]        = true,
-    ["Blackhole Sea Dragon"]   = true,
-    ["Skeleton Narwhal"]       = true,
-    ["Bucket Fish"]            = true,
-    ["Neonite Fish"]           = true,
-    ["Fluorivane"]             = true,
-    ["Elshark Gran Maja"]      = true,
-    ["Coney Fish"]             = true,
-    ["Blobby Shieldfish"]      = true,
-    ["Frostbite Leviathan"]    = true,
-    ["Primal Lobster"]         = true,
-    ["Emerald Winter Whale"]   = true,
-    ["Winter Frost Shark"]     = true,
-    ["Strawberry Orca"]        = true,
-    ["1x1x1x1 Comet Shark"]   = true,
-    ["Drip Walrus"]            = true,
-    ["Bonemaw Tyrant"]         = true,
-    ["Bone Whale"]             = true,
-    ["Bloodmoon Whale"]        = true,
-}
+-- Daftar item yang TIDAK ingin ditampilkan (tambah nama di sini saja)
+local BLOCKED_ITEMS = (function(list)
+    local t = {}
+    for _, v in ipairs(list) do t[v:lower()] = true end
+    return t
+end)({
+    "Blob Shark",            "Giant Squid",           "Cryoshade Glider",
+    "Gladiator Shark",       "Blackhole Sea Dragon",  "Skeleton Narwhal",
+    "Bucket Fish",           "Neonite Fish",           "Fluorivane",
+    "Elshark Gran Maja",     "Coney Fish",            "Blobby Shieldfish",
+    "Frostbite Leviathan",   "Primal Lobster",        "Emerald Winter Whale",
+    "Winter Frost Shark",    "Strawberry Orca",       "1x1x1x1 Comet Shark",
+    "Drip Walrus",           "Bonemaw Tyrant",        "Bone Whale",
+    "Bloodmoon Whale",       "Classic Glass Octopus", "Ghost Shark",
+    "Coral Whale",           "Holiday Turtle Plushie","Fish Fossil",
+    "Treasure Crab",         "Violet",                "Aurelion",
+})
+
+
 
 
 
@@ -109,9 +105,9 @@ pcall(function() TradeData    = require(ReplicatedStorage.Shared.Trading.TradeDa
 pcall(function() ItemUtility  = require(ReplicatedStorage.Shared.ItemUtility) end)
 
 if not Replion then
-    warn("[Sniper] Replion tidak tersedia! Pastikan dijalankan di Trade Plaza.")
-    return
+    warn("[Sniper] Replion belum tersedia saat startup — akan dicoba ulang saat scan.")
 end
+
 
 -- ────────────────────────────────
 --  SCAN SEMUA LISTING via Replion
@@ -239,26 +235,69 @@ local function scanAllListings()
                 local itemTier = (itemDef and itemDef.Data and itemDef.Data.Tier) or 0
                 local itemWeight = itemData.Item.Weight or itemData.Item.weight or ""
 
-                -- Dapatkan Variant dari item data
+                -- ── DEBUG: Print semua key di itemData & itemData.Item (hanya 3 item pertama) ──
+                if #entries < 3 then
+                    local function dumpTable(t, prefix)
+                        if type(t) ~= "table" then return end
+                        for k, v in pairs(t) do
+                            if type(v) == "table" then
+                                print(prefix .. tostring(k) .. " = {table}")
+                                dumpTable(v, prefix .. "  ")
+                            else
+                                print(prefix .. tostring(k) .. " = " .. tostring(v))
+                            end
+                        end
+                    end
+                    print("\n[DEBUG] ── itemData ──")
+                    dumpTable(itemData, "  ")
+                    print("[DEBUG] ── itemData.Item ──")
+                    dumpTable(itemData.Item, "  ")
+                    -- Cek juga dari ItemDef jika ada
+                    if itemDef then
+                        print("[DEBUG] ── itemDef keys ──")
+                        dumpTable(itemDef, "  ")
+                    end
+                end
+
+                -- Deteksi Variant/Mutation dari semua kemungkinan key Fish It
                 local itemVariant = ""
-                -- Cek berbagai kemungkinan key nama variant di Replion
-                local variantRaw = itemData.Item.Variant
+                local variantRaw =
+                    itemData.Item.Mutation        -- Fish It mutation
+                    or itemData.Item.MutationId
+                    or itemData.Item.Mutations     -- bisa array
+                    or itemData.Item.Variant
                     or itemData.Item.VariantId
                     or itemData.Item.variant
+                    or itemData.Item.mutant
+                    or itemData.Item.Mutant
+                    or itemData.Mutation
+                    or itemData.MutationId
                     or itemData.Variant
                     or itemData.VariantId
-                if variantRaw and variantRaw ~= 0 and variantRaw ~= "" then
-                    -- Coba dapatkan nama variant dari ItemDef
-                    if itemDef and itemDef.Variants then
-                        local vDef = itemDef.Variants[variantRaw]
-                            or itemDef.Variants[tostring(variantRaw)]
-                        if vDef then
-                            itemVariant = vDef.Name or vDef.name or tostring(variantRaw)
+
+                if variantRaw then
+                    if type(variantRaw) == "table" then
+                        -- Jika array of mutations, gabungkan semua
+                        local parts = {}
+                        for _, v in pairs(variantRaw) do
+                            if v and v ~= "" and v ~= 0 then
+                                table.insert(parts, tostring(v))
+                            end
+                        end
+                        itemVariant = table.concat(parts, ", ")
+                    elseif variantRaw ~= 0 and variantRaw ~= "" then
+                        -- Coba resolve nama dari ItemDef
+                        if itemDef and itemDef.Mutations then
+                            local m = itemDef.Mutations[variantRaw]
+                                or itemDef.Mutations[tostring(variantRaw)]
+                            itemVariant = (m and (m.Name or m.name)) or tostring(variantRaw)
+                        elseif itemDef and itemDef.Variants then
+                            local v = itemDef.Variants[variantRaw]
+                                or itemDef.Variants[tostring(variantRaw)]
+                            itemVariant = (v and (v.Name or v.name)) or tostring(variantRaw)
                         else
                             itemVariant = tostring(variantRaw)
                         end
-                    else
-                        itemVariant = tostring(variantRaw)
                     end
                 end
 
@@ -332,8 +371,11 @@ local function sendToDiscord(entries)
             end
         else
             if e.rap and e.rap >= MIN_RAP and e.price < e.rap then
-                e._filterTag = nil
-                table.insert(filtered, e)
+                local profit = e.rap - e.price
+                if profit >= MIN_PROFIT then
+                    e._filterTag = nil
+                    table.insert(filtered, e)
+                end
             end
         end
     end
@@ -685,6 +727,24 @@ local function runSniper()
     print("[Sniper] Fish It Plaza Booth Sniper v8.0")
     print("[Sniper] Scanner : " .. lp.Name)
     print("[Sniper] Server  : " .. jobId:sub(1, 12))
+
+    -- Pastikan Replion sudah tersedia (retry sampai 30 detik)
+    if not Replion then
+        StatusLabel.Text = "⏳ Tunggu Replion..."
+        for i = 1, 30 do
+            if not _sniperRunning then return end
+            pcall(function() Replion = require(ReplicatedStorage.Packages.Replion) end)
+            if Replion then break end
+            task.wait(1)
+        end
+        if not Replion then
+            StatusLabel.Text = "❌ Replion gagal load!"
+            warn("[Sniper] Replion tidak tersedia. Pastikan di Trade Plaza!")
+            _sniperRunning = false
+            setBtn(false)
+            return
+        end
+    end
 
     -- Tunggu sebelum scan
     for i = SCAN_WAIT, 1, -1 do
