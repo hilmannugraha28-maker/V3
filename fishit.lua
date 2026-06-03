@@ -417,7 +417,8 @@ local function sendToDiscord(entries)
     local joinUrl  = ("https://www.roblox.com/games/start?placeId=%d&gameInstanceId=%s"):format(placeId, jobId)
     local tpScript = ('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)'):format(placeId, jobId)
     local footer   = ("Fish It Sniper v8 | @%s | %s"):format(lp.Name, os.date("%d/%m/%Y %H:%M"))
-    local serverStr = jobId:sub(1, 8)
+    local serverStr   = jobId:sub(1, 8)
+    local playerCount = #Players:GetPlayers()
 
     local function buildField(i, e)
         local sourceStr  = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
@@ -503,7 +504,7 @@ local function sendToDiscord(entries)
     if hasProfit then
         if #inServer > 0 then
             print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
-            local desc1 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #inServer, joinUrl, tpScript)
+            local desc1 = ("Scanner: %s | %d listing | %d players | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #inServer, playerCount, joinUrl, tpScript)
             local fields1 = {}
             for i, e in ipairs(inServer) do
                 table.insert(fields1, buildField(i, e))
@@ -514,7 +515,7 @@ local function sendToDiscord(entries)
         if #offServer > 0 then
             task.wait(1)
             print(("[Discord] Kirim %d listing (off-server)..."):format(#offServer))
-            local desc2 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #offServer, joinUrl, tpScript)
+            local desc2 = ("Scanner: %s | %d listing | %d players | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #offServer, playerCount, joinUrl, tpScript)
             local fields2 = {}
             for i, e in ipairs(offServer) do
                 table.insert(fields2, buildField(i, e))
@@ -547,7 +548,7 @@ local function sendToDiscord(entries)
             table.insert(top25, nonProfit[i])
         end
         print(("[Discord] Kirim %d (dari %d) non-profit ke WEBHOOK_INFO..."):format(#top25, #nonProfit))
-        local desc3 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #top25, joinUrl, tpScript)
+        local desc3 = ("Scanner: %s | %d listing | %d players | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #top25, playerCount, joinUrl, tpScript)
         local fields3 = {}
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
