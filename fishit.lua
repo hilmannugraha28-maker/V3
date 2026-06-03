@@ -17,7 +17,9 @@ local jobId   = game.JobId
 -- ────────────────────────────────
 --  KONFIGURASI
 -- ────────────────────────────────
-local WEBHOOK    = "https://discord.com/api/webhooks/1511803435706617907/ISbwuFnRw68XU2qvSgZ3IVCmxCn01jD3hROs_jPDiraWruyBsVzVsIcJF7m7Vy070a6e"
+local WEBHOOK      = "https://discord.com/api/webhooks/1510643221406027926/m47QLSX-EZgXLLJAfc_GcTMY8gzYouN8mTu0hnswem3bztNIcHrp7AEuszIyWmIwZwRv"
+local WEBHOOK_INFO = "https://discord.com/api/webhooks/1510643283032801290/anFd_d8WkeCWZjkmgyDN0dxU5SiJ3z-OiyugpHxEFv9h1T2ldClV4a8jez_ehDQ8h7sz"
+
 local SCAN_WAIT  = 8     -- detik tunggu sebelum scan
 local HOP        = true  -- aktifkan auto server hop
 local HOP_DELAY  = 3
@@ -79,11 +81,13 @@ local httpReq = (syn and syn.request)
 
 if not httpReq then warn("[Sniper] HTTP tidak tersedia!"); return end
 
-local function postWebhook(payload)
+local function postWebhook(payload, url)
+    url = url or WEBHOOK
+    if not url or url == "" then return end
     local ok, body = pcall(HttpService.JSONEncode, HttpService, payload)
     if not ok then print("[Webhook] JSON error: " .. tostring(body)); return end
     local ok2, res = pcall(httpReq, {
-        Url     = WEBHOOK,
+        Url     = url,
         Method  = "POST",
         Headers = { ["Content-Type"] = "application/json" },
         Body    = body,
@@ -315,7 +319,8 @@ end
 --  KIRIM KE DISCORD
 -- ────────────────────────────────
 local function sendToDiscord(entries)
-    local filtered = {}
+    local filtered  = {}
+    local nonProfit = {}  -- listing harga >= RAP / tidak profit
 
     for _, e in ipairs(entries) do
 
@@ -348,13 +353,23 @@ local function sendToDiscord(entries)
             if e.price <= customMax then
                 e._filterTag = ("≤%s"):format(commas(customMax))
                 table.insert(filtered, e)
+            else
+                -- Harga melebihi batas custom → masuk non-profit
+                if WEBHOOK_INFO ~= "" then
+                    table.insert(nonProfit, e)
+                end
             end
         else
-            if e.rap and e.rap >= MIN_RAP and e.price < e.rap then
+            if e.rap and e.rap >= MIN_RAP then
                 local profit = e.rap - e.price
-                if profit >= MIN_PROFIT then
+                if e.price < e.rap and profit >= MIN_PROFIT then
                     e._filterTag = nil
                     table.insert(filtered, e)
+                else
+                    -- Harga >= RAP atau profit kecil → non-profit
+                    if WEBHOOK_INFO ~= "" then
+                        table.insert(nonProfit, e)
+                    end
                 end
             end
         end
@@ -446,7 +461,7 @@ local function sendToDiscord(entries)
         }
     end
 
-    local function sendEmbed(title, color, desc, fieldList)
+    local function sendEmbed(title, color, desc, fieldList, webhookUrl)
         for i = 1, #fieldList, 25 do
             local batch = {}
             for j = i, math.min(i + 24, #fieldList) do
@@ -464,12 +479,12 @@ local function sendToDiscord(entries)
                     fields      = batch,
                     footer      = { text = footer },
                 }},
-            })
+            }, webhookUrl)
             if i + 25 <= #fieldList then task.wait(1.2) end
         end
     end
 
-    -- ── Embed 1: Listing dari player yang ada di server ini ──
+    -- ── Embed 1: Listing profit (in-server) ──
     if #inServer > 0 then
         print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
         local desc1 = ("**[Fish It] Plaza Listings** — Server `%s`\nScanner: @%s | **%d listing aktif**\n[Join](%s)\n```\n%s\n```"):format(
@@ -481,7 +496,7 @@ local function sendToDiscord(entries)
         sendEmbed("🏪 Listing (Server Ini)", 0xF4A460, desc1, fields1)
     end
 
-    -- ── Embed 2: Listing dari player yang tidak ada di server ini ──
+    -- ── Embed 2: Listing profit (off-server) ──
     if #offServer > 0 then
         task.wait(1)
         print(("[Discord] Kirim %d listing (off-server/database)..."):format(#offServer))
@@ -494,8 +509,24 @@ local function sendToDiscord(entries)
         sendEmbed("👤 Listing (Database/Off-Server)", 0x5865F2, desc2, fields2)
     end
 
-    print(("[Sniper] Selesai: %d in-server + %d off-server listing"):format(#inServer, #offServer))
+    -- ── Embed 3: Non-profit / minus → WEBHOOK_INFO ──
+    if #nonProfit > 0 and WEBHOOK_INFO ~= "" then
+        task.wait(1)
+        print(("[Discord] Kirim %d listing non-profit ke WEBHOOK_INFO..."):format(#nonProfit))
+        -- Sort by harga terendah dulu
+        table.sort(nonProfit, function(a, b) return a.price < b.price end)
+        local desc3 = ("**[Fish It] Info Listings** — Server `%s`\nScanner: @%s | **%d listing** harga ≥ RAP / tidak profit\n[Join](%s)"):format(
+            serverStr, lp.Name, #nonProfit, joinUrl)
+        local fields3 = {}
+        for i, e in ipairs(nonProfit) do
+            table.insert(fields3, buildField(i, e))
+        end
+        sendEmbed("📋 Non-Profit Listings", 0x95a5a6, desc3, fields3, WEBHOOK_INFO)
+    end
+
+    print(("[Sniper] Selesai: %d profit + %d non-profit listing"):format(#entries - #nonProfit, #nonProfit))
 end
+
 
 -- ────────────────────────────────
 --  SERVER HOP
