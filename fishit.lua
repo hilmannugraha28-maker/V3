@@ -32,12 +32,20 @@ local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai 
 -- Item yang tidak ada di sini tetap pakai aturan price < RAP seperti biasa
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
-    ["Axolotl"]        = 4000,   -- tampilkan Axolotl jika harga <= 2000
+    ["Axolotl"]        = 2000,   -- tampilkan Axolotl jika harga <= 2000
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
 }
 
+-- Item yang HANYA ditampilkan jika punya variant/mutasi
+-- (tanpa variant → tidak dikirim ke Discord)
+local REQUIRE_VARIANT = {
+    ["Megalodon"] = true,   -- Megalodon wajib punya variant
+    -- ["Axolotl"] = true,  -- contoh lain
+}
+
 -- Daftar item yang TIDAK ingin ditampilkan (tambah nama di sini saja)
+
 local BLOCKED_ITEMS = (function(list)
     local t = {}
     for _, v in ipairs(list) do t[v:lower()] = true end
@@ -166,7 +174,7 @@ local function scanAllListings()
         },
         Rod = {
             [1]="Common", [2]="Uncommon", [3]="Rare",
-            [4]="Epic",   [5]="Legendary", [6]="Mythic", [7]="Legendary"
+            [4]="Epic",   [5]="Legendary", [6]="Mythic", [7]="Secret"
         },
         -- fallback untuk itemType lain
         Default = {
@@ -322,6 +330,11 @@ local function sendToDiscord(entries)
         end
         if isBlocked then continue end
 
+        -- Skip jika item wajib punya variant tapi tidak ada
+        if REQUIRE_VARIANT[e.name] or REQUIRE_VARIANT[e.name:lower()] then
+            if not e.variant or e.variant == "" then continue end
+        end
+
         -- Cek custom filter dulu (case-insensitive)
         local customMax = nil
         for itemName, maxPrice in pairs(CUSTOM_FILTERS) do
@@ -390,8 +403,20 @@ local function sendToDiscord(entries)
 
     local function buildField(i, e)
         local sourceStr  = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
-        local weightStr  = (e.weight and e.weight ~= "" and e.weight ~= "0")
-            and (" | " .. e.weight .. "kg") or ""
+        local weightStr = ""
+        local wNum = tonumber(e.weight)
+        if wNum and wNum > 0 then
+            local wDisplay
+            if wNum >= 1000000 then
+                wDisplay = ("%.1fkt"):format(wNum / 1000000)   -- kiloton
+            elseif wNum >= 1000 then
+                wDisplay = ("%.2ft"):format(wNum / 1000)       -- ton
+            else
+                wDisplay = ("%.2fkg"):format(wNum)             -- kg biasa
+            end
+            weightStr = " | " .. wDisplay
+        end
+
         local variantStr = (e.variant and e.variant ~= "") and ("\n✨ Variant: **" .. e.variant .. "**") or ""
 
         local rapLine
