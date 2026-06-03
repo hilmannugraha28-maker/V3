@@ -30,7 +30,7 @@ local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 -- Item yang tidak ada di sini tetap pakai aturan price < RAP seperti biasa
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
-    ["Axolotl"]      = 2000,
+    ["Axolotl"]        = 2000,   -- tampilkan Axolotl jika harga <= 2000
     -- ["Undead Guitar"] = 5000, -- contoh: Undead Guitar di bawah 5000
     -- ["Holy Rod"]      = 200,  -- contoh: Holy Rod di bawah 200
 }
@@ -204,6 +204,29 @@ local function scanAllListings()
                 local itemTier = (itemDef and itemDef.Data and itemDef.Data.Tier) or 0
                 local itemWeight = itemData.Item.Weight or itemData.Item.weight or ""
 
+                -- Dapatkan Variant dari item data
+                local itemVariant = ""
+                -- Cek berbagai kemungkinan key nama variant di Replion
+                local variantRaw = itemData.Item.Variant
+                    or itemData.Item.VariantId
+                    or itemData.Item.variant
+                    or itemData.Variant
+                    or itemData.VariantId
+                if variantRaw and variantRaw ~= 0 and variantRaw ~= "" then
+                    -- Coba dapatkan nama variant dari ItemDef
+                    if itemDef and itemDef.Variants then
+                        local vDef = itemDef.Variants[variantRaw]
+                            or itemDef.Variants[tostring(variantRaw)]
+                        if vDef then
+                            itemVariant = vDef.Name or vDef.name or tostring(variantRaw)
+                        else
+                            itemVariant = tostring(variantRaw)
+                        end
+                    else
+                        itemVariant = tostring(variantRaw)
+                    end
+                end
+
                 -- Dapatkan RAP dari data replion
                 local rap = nil
                 if allRapData and itemType and itemId then
@@ -229,6 +252,7 @@ local function scanAllListings()
                     price      = tonumber(itemData.Price) or 0,
                     rap        = rap,
                     weight     = tostring(itemWeight ~= 0 and itemWeight or ""),
+                    variant    = itemVariant,
                 })
             end
         end
@@ -310,9 +334,10 @@ local function sendToDiscord(entries)
     local serverStr = jobId:sub(1, 8)
 
     local function buildField(i, e)
-        local sourceStr = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
-        local weightStr = (e.weight and e.weight ~= "" and e.weight ~= "0")
+        local sourceStr  = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
+        local weightStr  = (e.weight and e.weight ~= "" and e.weight ~= "0")
             and (" | " .. e.weight .. "kg") or ""
+        local variantStr = (e.variant and e.variant ~= "") and ("\n✨ Variant: **" .. e.variant .. "**") or ""
 
         local rapLine
         if e._filterTag then
@@ -330,10 +355,11 @@ local function sendToDiscord(entries)
             name  = ("🔥 #%d %s%s"):format(i, e.name, sourceStr),
             value = (
                 "💰 Harga: **%s T**\n" ..
+                "%s" ..
                 "%s\n" ..
                 "👤 %s | 🏷️ %s%s"
             ):format(
-                commas(e.price), rapLine,
+                commas(e.price), rapLine, variantStr,
                 e.seller, e.tierName, weightStr
             ),
             inline = true,
@@ -442,29 +468,296 @@ local function hopServer()
 end
 
 -- ────────────────────────────────
---  MAIN
+--  GUI START / STOP
 -- ────────────────────────────────
-print("[Sniper] Fish It Plaza Booth Sniper v8.0")
-print("[Sniper] Scanner : " .. lp.Name)
-print("[Sniper] Server  : " .. jobId:sub(1, 12))
-print("[Sniper] Tunggu  : " .. SCAN_WAIT .. "s...")
+local CoreGui        = game:GetService("CoreGui")
+local TweenService   = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
-task.wait(SCAN_WAIT)
+local _sniperRunning = false
+local _sniperThread  = nil
+local _hopThread     = nil
 
--- Scan semua listing via Replion
-print("[Sniper] Memulai scan listing...")
-local entries = scanAllListings()
-
--- Kirim ke Discord
-if #entries > 0 then
-    sendToDiscord(entries)
-else
-    print("[Sniper] Tidak ada listing ditemukan di server ini.")
+-- Hapus GUI lama jika ada
+if CoreGui:FindFirstChild("FishItSniperHUD") then
+    CoreGui.FishItSniperHUD:Destroy()
 end
 
--- Server hop
-if HOP then
-    print("[Sniper] Pindah server...")
-    task.wait(2)
-    hopServer()
+local guiParent = pcall(function() return CoreGui.Name end) and CoreGui or lp:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FishItSniperHUD"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 999
+ScreenGui.Parent = guiParent
+
+-- Main frame
+local Frame = Instance.new("Frame")
+Frame.Name = "HUD"
+Frame.Size = UDim2.new(0, 200, 0, 90)
+Frame.Position = UDim2.new(0, 20, 0.5, -45)
+Frame.BackgroundColor3 = Color3.fromRGB(14, 14, 20)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
+Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 1.5
+stroke.Color = Color3.fromRGB(80, 80, 120)
+stroke.Transparency = 0.4
+stroke.Parent = Frame
+
+-- Title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 28)
+TitleBar.BackgroundColor3 = Color3.fromRGB(10, 10, 16)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Frame
+local tc = Instance.new("UICorner")
+tc.CornerRadius = UDim.new(0, 10)
+tc.Parent = TitleBar
+-- Fix bottom of title bar
+local fix = Instance.new("Frame")
+fix.Size = UDim2.new(1, 0, 0, 10)
+fix.Position = UDim2.new(0, 0, 1, -10)
+fix.BackgroundColor3 = Color3.fromRGB(10, 10, 16)
+fix.BorderSizePixel = 0
+fix.Parent = TitleBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -8, 1, 0)
+TitleLabel.Position = UDim2.new(0, 8, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "🎣 Fish It Sniper"
+TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 12
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TitleBar
+
+-- Accent line
+local accentLine = Instance.new("Frame")
+accentLine.Size = UDim2.new(1, 0, 0, 2)
+accentLine.Position = UDim2.new(0, 0, 1, 0)
+accentLine.BackgroundColor3 = Color3.fromRGB(88, 130, 255)
+accentLine.BorderSizePixel = 0
+accentLine.Parent = TitleBar
+local grad = Instance.new("UIGradient")
+grad.Color = ColorSequence.new(Color3.fromRGB(88,130,255), Color3.fromRGB(255,200,80))
+grad.Parent = accentLine
+
+-- Status label
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -12, 0, 16)
+StatusLabel.Position = UDim2.new(0, 6, 0, 32)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "⏹ Idle"
+StatusLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 11
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Parent = Frame
+
+-- START / STOP button
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(1, -16, 0, 30)
+Btn.Position = UDim2.new(0, 8, 0, 52)
+Btn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+Btn.Text = "▶  START"
+Btn.Font = Enum.Font.GothamBold
+Btn.TextSize = 13
+Btn.TextColor3 = Color3.new(1, 1, 1)
+Btn.AutoButtonColor = false
+Btn.BorderSizePixel = 0
+Btn.Parent = Frame
+Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
+
+local function setBtn(running)
+    if running then
+        Btn.Text = "⏹  STOP"
+        Btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        stroke.Color = Color3.fromRGB(200, 50, 50)
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 120)
+    else
+        Btn.Text = "▶  START"
+        Btn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+        stroke.Color = Color3.fromRGB(80, 80, 120)
+        StatusLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
+        StatusLabel.Text = "⏹ Idle"
+    end
 end
+
+-- Hover effects
+Btn.MouseEnter:Connect(function()
+    TweenService:Create(Btn, TweenInfo.new(0.15), {
+        BackgroundColor3 = _sniperRunning
+            and Color3.fromRGB(230, 70, 70)
+            or  Color3.fromRGB(60, 210, 100)
+    }):Play()
+end)
+Btn.MouseLeave:Connect(function()
+    TweenService:Create(Btn, TweenInfo.new(0.15), {
+        BackgroundColor3 = _sniperRunning
+            and Color3.fromRGB(200, 50, 50)
+            or  Color3.fromRGB(40, 180, 80)
+    }):Play()
+end)
+
+-- Drag logic
+do
+    local dragging, dragStart, startPos
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+end
+
+-- ────────────────────────────────
+--  SNIPER RUNNER
+-- ────────────────────────────────
+local function runSniper()
+    StatusLabel.Text = ("⏳ Tunggu %ds..."):format(SCAN_WAIT)
+    print("[Sniper] Fish It Plaza Booth Sniper v8.0")
+    print("[Sniper] Scanner : " .. lp.Name)
+    print("[Sniper] Server  : " .. jobId:sub(1, 12))
+
+    -- Tunggu sebelum scan
+    for i = SCAN_WAIT, 1, -1 do
+        if not _sniperRunning then return end
+        StatusLabel.Text = ("⏳ Scan dalam %ds..."):format(i)
+        task.wait(1)
+    end
+
+    if not _sniperRunning then return end
+
+    -- Scan listing
+    StatusLabel.Text = "🔍 Scanning..."
+    print("[Sniper] Memulai scan listing...")
+    local entries = scanAllListings()
+
+    if not _sniperRunning then return end
+
+    -- Kirim ke Discord
+    if #entries > 0 then
+        StatusLabel.Text = ("📨 Kirim %d listing..."):format(#entries)
+        sendToDiscord(entries)
+    else
+        StatusLabel.Text = "⚠️ Tidak ada listing"
+        print("[Sniper] Tidak ada listing ditemukan.")
+    end
+
+    if not _sniperRunning then return end
+
+    -- Server hop
+    if HOP then
+        StatusLabel.Text = "🔀 Server hop..."
+        print("[Sniper] Pindah server...")
+        task.wait(2)
+
+        -- hop loop dengan cek flag
+        local function hopLoop()
+            while _sniperRunning do
+                StatusLabel.Text = "🔍 Cari server..."
+                print("[HOP] Mencari server...")
+                local list, cursor = {}, ""
+                for _ = 1, 5 do
+                    if not _sniperRunning then return end
+                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&cursor=%s"):format(placeId, cursor)
+                    local ok, res = pcall(httpReq, { Url = url, Method = "GET" })
+                    if not ok or not res then break end
+                    local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
+                    if not ok2 or not data or not data.data then break end
+                    for _, s in ipairs(data.data) do
+                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
+                            table.insert(list, { id = s.id, players = s.playing or 0 })
+                        end
+                    end
+                    cursor = data.nextPageCursor or ""
+                    if cursor == "" or #list >= 50 then break end
+                end
+
+                if #list == 0 then
+                    StatusLabel.Text = "❌ Tidak ada server"
+                    if not _sniperRunning then return end
+                    task.wait(30)
+                else
+                    table.sort(list, function(a, b) return a.players > b.players end)
+                    StatusLabel.Text = ("🔀 Hop → %d players"):format(list[1].players)
+                    for _, srv in ipairs(list) do
+                        if not _sniperRunning then return end
+                        task.wait(HOP_DELAY)
+                        local failed, conn = false, nil
+                        pcall(function()
+                            conn = TeleportService.TeleportInitFailed:Connect(function(p)
+                                if p == lp then failed = true end
+                            end)
+                        end)
+                        local ok = pcall(TeleportService.TeleportToPlaceInstance, TeleportService, placeId, srv.id, lp)
+                        if ok then
+                            task.wait(15)
+                            if conn then pcall(function() conn:Disconnect() end) end
+                            if not failed then return end
+                        end
+                        if conn then pcall(function() conn:Disconnect() end) end
+                    end
+                    task.wait(30)
+                end
+            end
+        end
+
+        hopLoop()
+    end
+end
+
+-- ────────────────────────────────
+--  BUTTON CLICK
+-- ────────────────────────────────
+Btn.MouseButton1Click:Connect(function()
+    if _sniperRunning then
+        -- STOP
+        _sniperRunning = false
+        if _sniperThread then
+            task.cancel(_sniperThread)
+            _sniperThread = nil
+        end
+        setBtn(false)
+        print("[Sniper] Dihentikan oleh user.")
+    else
+        -- START
+        _sniperRunning = true
+        setBtn(true)
+        _sniperThread = task.spawn(function()
+            local ok, err = pcall(runSniper)
+            if not ok then
+                StatusLabel.Text = "❌ Error!"
+                warn("[Sniper] Error: " .. tostring(err))
+            end
+            if _sniperRunning then
+                _sniperRunning = false
+                setBtn(false)
+            end
+        end)
+        print("[Sniper] Dimulai.")
+    end
+end)
+
+print("[Sniper] GUI loaded — klik ▶ START untuk mulai scan")
