@@ -44,7 +44,14 @@ local CUSTOM_FILTERS = {
 -- (tanpa variant → tidak dikirim ke Discord)
 local REQUIRE_VARIANT = {
     ["Megalodon"] = true,   -- Megalodon wajib punya variant
-    -- ["Axolotl"] = true,  -- contoh lain
+    -- ["Axolotl"] = true,
+}
+
+-- Item yang hanya ditampilkan jika tier tertentu
+-- (gunakan angka tier: 7 = Secret, 6 = Mythic, 5 = Legendary, dll)
+local REQUIRE_TIER = {
+    ["Axolotl"] = 7,   -- hanya Axolotl tier 7 (Secret)
+    -- ["Megalodon"] = 7,
 }
 
 -- Daftar item yang TIDAK ingin ditampilkan (tambah nama di sini saja)
@@ -199,16 +206,9 @@ local function scanAllListings()
         local sellerName
 
         if sellerPlayer then
-            -- Tampilkan DisplayName + @username
-            local displayName = sellerPlayer.DisplayName
-            local userName    = sellerPlayer.Name
-            if displayName ~= userName then
-                sellerName = displayName .. " (@" .. userName .. ")"
-            else
-                sellerName = userName
-            end
+            -- Hanya DisplayName
+            sellerName = sellerPlayer.DisplayName
         else
-            -- Player tidak ada di server ini (listing dari server lain/database)
             sellerName = "ID:" .. userIdStr
         end
 
@@ -341,6 +341,10 @@ local function sendToDiscord(entries)
             if not e.variant or e.variant == "" then continue end
         end
 
+        -- Skip jika item wajib tier tertentu tapi tier tidak cocok
+        local reqTier = REQUIRE_TIER[e.name] or REQUIRE_TIER[e.name:lower()]
+        if reqTier and e.tier ~= reqTier then continue end
+
         -- Cek custom filter dulu (case-insensitive)
         local customMax = nil
         for itemName, maxPrice in pairs(CUSTOM_FILTERS) do
@@ -437,23 +441,23 @@ local function sendToDiscord(entries)
 
         local rapLine
         if e._filterTag then
-            rapLine = ("📌 Filter manual: harga ≤ %s T"):format(e._filterTag)
+            rapLine = ("Filter: harga ≤ %s T"):format(e._filterTag)
         elseif e.rap and e.rap > 0 then
             local profit = e.rap - e.price
             local pct    = math.floor((e.price / e.rap) * 100)
-            rapLine = ("📊 RAP: **%s T** | Profit: **+%s T** (%d%%)"):format(
+            rapLine = ("RAP: **%s T** | Profit: **+%s T** (%d%%)"):format(
                 commas(e.rap), commas(profit), pct)
         else
-            rapLine = "📊 RAP: -"
+            rapLine = "RAP: -"
         end
 
         return {
             name  = ("🔥 #%d %s%s"):format(i, e.name, sourceStr),
             value = (
-                "💰 Harga: **%s T**\n" ..
+                "Harga: **%s T**\n" ..
                 "%s" ..
                 "%s\n" ..
-                "👤 %s | 🏷️ %s%s"
+                "%s | 🏷️ %s%s"
             ):format(
                 commas(e.price), rapLine, variantStr,
                 e.seller, e.tierName, weightStr
@@ -488,42 +492,49 @@ local function sendToDiscord(entries)
     -- ── Embed 1: Listing profit (in-server) ──
     if #inServer > 0 then
         print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
-        local desc1 = ("**[Fish It] Plaza Listings** — Server `%s`\nScanner: @%s | **%d listing aktif**\n[Join](%s)\n```\n%s\n```"):format(
-            serverStr, lp.Name, #inServer, joinUrl, tpScript)
+        local desc1 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #inServer)
         local fields1 = {}
         for i, e in ipairs(inServer) do
             table.insert(fields1, buildField(i, e))
         end
-        sendEmbed("🏪 Listing (Server Ini)", 0xF4A460, desc1, fields1)
+        sendEmbed("Plaza Sniper", 0xF4A460, desc1, fields1)
     end
 
     -- ── Embed 2: Listing profit (off-server) ──
     if #offServer > 0 then
         task.wait(1)
         print(("[Discord] Kirim %d listing (off-server/database)..."):format(#offServer))
-        local desc2 = ("**[Fish It] Off-Server Listings** — Server `%s`\nScanner: @%s | **%d listing** dari player tidak ada di server ini\n[Join](%s)"):format(
-            serverStr, lp.Name, #offServer, joinUrl)
+        local desc2 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #offServer)
         local fields2 = {}
         for i, e in ipairs(offServer) do
             table.insert(fields2, buildField(i, e))
         end
-        sendEmbed("👤 Listing (Database/Off-Server)", 0x5865F2, desc2, fields2)
+        sendEmbed("Plaza Sniper", 0x5865F2, desc2, fields2)
     end
 
-    -- ── Embed 3: Non-profit / minus → WEBHOOK_INFO ──
+    -- ── Embed 3: Non-profit → WEBHOOK_INFO ──
     if #nonProfit > 0 and WEBHOOK_INFO ~= "" then
         task.wait(1)
-        print(("[Discord] Kirim %d listing non-profit ke WEBHOOK_INFO..."):format(#nonProfit))
-        -- Sort by harga terendah dulu
-        table.sort(nonProfit, function(a, b) return a.price < b.price end)
-        local desc3 = ("**[Fish It] Info Listings** — Server `%s`\nScanner: @%s | **%d listing** harga ≥ RAP / tidak profit\n[Join](%s)"):format(
-            serverStr, lp.Name, #nonProfit, joinUrl)
+        -- Sort: profit terbesar di atas (RAP - price, meski negatif)
+        table.sort(nonProfit, function(a, b)
+            local aP = (a.rap or 0) - a.price
+            local bP = (b.rap or 0) - b.price
+            return aP > bP
+        end)
+        -- Ambil 25 teratas saja
+        local top25 = {}
+        for i = 1, math.min(25, #nonProfit) do
+            table.insert(top25, nonProfit[i])
+        end
+        print(("[Discord] Kirim %d (dari %d) non-profit ke WEBHOOK_INFO..."):format(#top25, #nonProfit))
+        local desc3 = ("Scanner: %s | %d listing"):format(lp.DisplayName, #top25)
         local fields3 = {}
-        for i, e in ipairs(nonProfit) do
+        for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
         end
-        sendEmbed("📋 Non-Profit Listings", 0x95a5a6, desc3, fields3, WEBHOOK_INFO)
+        sendEmbed("Non Profit", 0x95a5a6, desc3, fields3, WEBHOOK_INFO)
     end
+
 
     print(("[Sniper] Selesai: %d profit + %d non-profit listing"):format(#entries - #nonProfit, #nonProfit))
 end
