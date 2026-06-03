@@ -521,12 +521,18 @@ local function sendToDiscord(entries)
     -- ── Embed 3: Non-profit → WEBHOOK_INFO ──
     if #nonProfit > 0 and WEBHOOK_INFO ~= "" then
         task.wait(1)
-        -- Sort: profit terbesar di atas (RAP - price, meski negatif)
+        -- Sort: Secret (7) → Mythic (6) → lainnya, tiap grup profit terbesar dulu
+        local tierPriority = { [7] = 1, [6] = 2 }  -- Secret = rank 1, Mythic = rank 2
         table.sort(nonProfit, function(a, b)
+            local aRank = tierPriority[a.tier] or 3
+            local bRank = tierPriority[b.tier] or 3
+            if aRank ~= bRank then return aRank < bRank end
+            -- Tier sama → profit terbesar dulu
             local aP = (a.rap or 0) - a.price
             local bP = (b.rap or 0) - b.price
             return aP > bP
         end)
+
         -- Ambil 25 teratas saja
         local top25 = {}
         for i = 1, math.min(25, #nonProfit) do
