@@ -380,12 +380,14 @@ local function sendToDiscord(entries)
         end
     end
 
-    print(("[Discord] %d listing total → %d lolos filter"):format(#entries, #filtered))
+    print(("[Discord] %d listing total → %d lolos filter | %d non-profit"):format(#entries, #filtered, #nonProfit))
 
-    if #filtered == 0 then
-        print("[Discord] Tidak ada listing yang cocok filter di server ini.")
+    if #filtered == 0 and #nonProfit == 0 then
+        print("[Discord] Tidak ada listing sama sekali.")
         return
     end
+
+    local hasProfit = #filtered > 0
 
     -- Sort: custom-filter item di atas, lalu sort profit terbesar
     table.sort(filtered, function(a, b)
@@ -489,28 +491,32 @@ local function sendToDiscord(entries)
         end
     end
 
-    -- ── Embed 1: Listing profit (in-server) ──
-    if #inServer > 0 then
-        print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
-        local desc1 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #inServer, joinUrl)
-        local fields1 = {}
-        for i, e in ipairs(inServer) do
-            table.insert(fields1, buildField(i, e))
+    -- ── Embed 1 & 2: Listing profit (hanya jika ada) ──
+    if hasProfit then
+        if #inServer > 0 then
+            print(("[Discord] Kirim %d listing (in-server)..."):format(#inServer))
+            local desc1 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #inServer, joinUrl, tpScript)
+            local fields1 = {}
+            for i, e in ipairs(inServer) do
+                table.insert(fields1, buildField(i, e))
+            end
+            sendEmbed("Plaza Sniper", 0xF4A460, desc1, fields1)
         end
-        sendEmbed("Plaza Sniper", 0xF4A460, desc1, fields1)
+
+        if #offServer > 0 then
+            task.wait(1)
+            print(("[Discord] Kirim %d listing (off-server)..."):format(#offServer))
+            local desc2 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #offServer, joinUrl, tpScript)
+            local fields2 = {}
+            for i, e in ipairs(offServer) do
+                table.insert(fields2, buildField(i, e))
+            end
+            sendEmbed("Plaza Sniper", 0x5865F2, desc2, fields2)
+        end
+    else
+        print("[Discord] Tidak ada listing profit — skip embed profit.")
     end
 
-    -- ── Embed 2: Listing profit (off-server) ──
-    if #offServer > 0 then
-        task.wait(1)
-        print(("[Discord] Kirim %d listing (off-server/database)..."):format(#offServer))
-        local desc2 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #offServer, joinUrl)
-        local fields2 = {}
-        for i, e in ipairs(offServer) do
-            table.insert(fields2, buildField(i, e))
-        end
-        sendEmbed("Plaza Sniper", 0x5865F2, desc2, fields2)
-    end
 
     -- ── Embed 3: Non-profit → WEBHOOK_INFO ──
     if #nonProfit > 0 and WEBHOOK_INFO ~= "" then
@@ -527,7 +533,7 @@ local function sendToDiscord(entries)
             table.insert(top25, nonProfit[i])
         end
         print(("[Discord] Kirim %d (dari %d) non-profit ke WEBHOOK_INFO..."):format(#top25, #nonProfit))
-        local desc3 = ("Scanner: %s | %d listing | [Join Server](%s)"):format(lp.DisplayName, #top25, joinUrl)
+        local desc3 = ("Scanner: %s | %d listing | [Join Server](%s)\n```\n%s\n```"):format(lp.DisplayName, #top25, joinUrl, tpScript)
         local fields3 = {}
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
