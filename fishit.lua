@@ -510,7 +510,7 @@ local function sendToDiscord(entries)
             for i, e in ipairs(inServer) do
                 table.insert(fields1, buildField(i, e))
             end
-            sendEmbed("Plaza Sniper", 0xF4A460, desc1, fields1)
+            sendEmbed("Plaza Sniper", 0xED4245, desc1, fields1)
         end
 
         if #offServer > 0 then
