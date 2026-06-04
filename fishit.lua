@@ -374,8 +374,8 @@ local function sendToDiscord(entries)
                     e._filterTag = nil
                     table.insert(filtered, e)
                 else
-                    -- Harga >= RAP atau profit kecil → non-profit
-                    if WEBHOOK_INFO ~= "" then
+                    -- Harga < RAP tapi profit kecil → non-profit (hanya jika masih save)
+                    if WEBHOOK_INFO ~= "" and e.price < e.rap then
                         table.insert(nonProfit, e)
                     end
                 end
@@ -448,27 +448,27 @@ local function sendToDiscord(entries)
         elseif e.rap and e.rap > 0 then
             local profit = e.rap - e.price
             local pct    = math.floor((e.price / e.rap) * 100)
-            rapLine = ("**RAP:** **%s** (%d%%)"):format(commas(e.rap), pct)
+            rapLine = ("RAP: **%s** (%d%%)"):format(commas(e.rap), pct)
             if profit >= 0 then
                 profitSign = 1
-                saveLine = ("**Save:** **%s Tokens**"):format(commas(profit))
+                saveLine = ("Save: **%s Tokens**"):format(commas(profit))
             else
                 profitSign = -1
-                saveLine = ("**Loss:** **-%s Tokens**"):format(commas(math.abs(profit)))
+                saveLine = ("Loss: **-%s Tokens**"):format(commas(math.abs(profit)))
             end
         else
-            rapLine = "**RAP:** -"
+            rapLine = "RAP: **-**"
         end
 
         local lines = {}
-        table.insert(lines, ("**Nama:** **%s**%s"):format(e.name, sourceStr))
-        table.insert(lines, ("**Harga:** **%s Tokens**"):format(commas(e.price)))
-        table.insert(lines, ("**Seller:** %s"):format(e.seller))
+        table.insert(lines, ("Nama: **%s**%s"):format(e.name, sourceStr))
+        table.insert(lines, ("Harga: **%s Tokens**"):format(commas(e.price)))
+        table.insert(lines, ("Seller: **%s**"):format(e.seller))
         table.insert(lines, rapLine)
         if saveLine ~= "" then table.insert(lines, saveLine) end
-        if variantStr ~= "" then table.insert(lines, ("**Variant:** **%s**"):format(e.variant)) end
-        table.insert(lines, ("**Tier:** %s"):format(e.tierName))
-        if weightStr ~= "" then table.insert(lines, ("**Weight:** %s"):format(weightStr)) end
+        if variantStr ~= "" then table.insert(lines, ("Variant: **%s**"):format(e.variant)) end
+        table.insert(lines, ("Tier: **%s**"):format(e.tierName))
+        if weightStr ~= "" then table.insert(lines, ("Weight: **%s**"):format(weightStr)) end
 
         local icon = profitSign > 0 and "🔥 " or ""
 
