@@ -461,7 +461,7 @@ local function sendToDiscord(entries)
         end
 
         local lines = {}
-        table.insert(lines, ("**Nama:** %s%s"):format(e.name, sourceStr))
+        table.insert(lines, ("**Nama:** **%s**%s"):format(e.name, sourceStr))
         table.insert(lines, ("**Harga:** **%s Tokens**"):format(commas(e.price)))
         table.insert(lines, ("**Seller:** %s"):format(e.seller))
         table.insert(lines, rapLine)
@@ -557,7 +557,7 @@ local function sendToDiscord(entries)
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
         end
-        sendEmbed("Non Profit", 0x95a5a6, desc3, fields3, WEBHOOK_INFO)
+        sendEmbed("Non Profit", 0xED4245, desc3, fields3, WEBHOOK_INFO)
     end
 
 
