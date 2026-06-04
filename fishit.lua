@@ -79,8 +79,9 @@ end)({
     "Depthseeker Ray",       "Flame Tyrant",          "Scare",
     "Runic Enchant Stone",
     "Cute Octopus",          "Pink",                  "Panther Eel",
-    "Hybodus",               "Sheriff Sawfish",       "Robot Kraken",
+    "Hybodus",               "Sheriff Sawfish",       "Kraken",
     "Frostborn",             "Thresher Shark",        "Sunfang Nautilus",
+    "Purple Retro Squid",
 })
 
 
