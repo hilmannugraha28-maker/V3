@@ -859,8 +859,9 @@ local function runSniper()
                     if not ok or not res then break end
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
                     if not ok2 or not data or not data.data then break end
+                    local maxPlayer = (placeId == 121864768012064) and 18 or math.huge
                     for _, s in ipairs(data.data) do
-                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
+                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER and (s.playing or 0) <= maxPlayer then
                             table.insert(list, { id = s.id, players = s.playing or 0 })
                         end
                     end
