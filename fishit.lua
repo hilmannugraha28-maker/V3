@@ -470,8 +470,10 @@ local function sendToDiscord(entries)
         table.insert(lines, ("**Tier:** %s"):format(e.tierName))
         if weightStr ~= "" then table.insert(lines, ("**Weight:** %s"):format(weightStr)) end
 
+        local icon = profitSign > 0 and "🔥 " or ""
+
         return {
-            name  = ("🔥 #%d SNIPE"):format(i),
+            name  = ("%s#%d SNIPE"):format(icon, i),
             value = table.concat(lines, "\n"),
             inline = true,
         }
