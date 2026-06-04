@@ -872,7 +872,7 @@ local function runSniper()
                 local list, cursor = {}, ""
                 for _ = 1, 5 do
                     if not _sniperRunning then return end
-                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(placeId, cursor)
+                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&cursor=%s"):format(placeId, cursor)
                     local ok, res = pcall(httpReq, { Url = url, Method = "GET" })
                     if not ok or not res then break end
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
