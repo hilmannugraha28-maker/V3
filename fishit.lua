@@ -879,7 +879,8 @@ local function runSniper()
                 end
 
                 if #list == 0 then
-                    StatusLabel.Text = "Tidak ada server"
+                    StatusLabel.Text = "Tidak ada server (0 found)"
+                    print("[HOP] 0 server ditemukan untuk placeId: " .. tostring(placeId))
                     if not _sniperRunning then return end
                     task.wait(30)
                 else
@@ -889,8 +890,8 @@ local function runSniper()
                         list[i], list[j] = list[j], list[i]
                     end
                     local picked = list[1]
-                    StatusLabel.Text = ("Hop random > %d players"):format(picked.players)
-                    print(("[HOP] Pilih server random: %s (%d players)"):format(picked.id:sub(1,8), picked.players))
+                    StatusLabel.Text = ("%d server | Hop > %d players"):format(#list, picked.players)
+                    print(("[HOP] %d server ditemukan | Pilih: %s (%d players)"):format(#list, picked.id:sub(1,8), picked.players))
 
                     local failed, conn = false, nil
                     pcall(function()
