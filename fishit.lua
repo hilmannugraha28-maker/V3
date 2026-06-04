@@ -294,7 +294,30 @@ local function scanAllListings()
                 local variantRaw = meta.VariantId or meta.variantId
                     or meta.Variant or meta.variant
                 if variantRaw and variantRaw ~= "" and variantRaw ~= 0 then
-                    itemVariant = tostring(variantRaw)
+                    if type(variantRaw) == "table" then
+                        -- Coba ambil nama/id dari dalam table
+                        local vName = variantRaw.Name or variantRaw.name
+                            or variantRaw.Id or variantRaw.id
+                        if vName then
+                            itemVariant = tostring(vName)
+                        end
+                    elseif type(variantRaw) == "number" or type(variantRaw) == "string" then
+                        -- Coba resolve variant ID ke nama via GetVariants
+                        local vId = tonumber(variantRaw)
+                        if vId then
+                            local vOk, allVariants = pcall(function() return ItemUtility.GetVariants() end)
+                            if vOk and allVariants and allVariants[vId] then
+                                local vData = allVariants[vId]
+                                itemVariant = (vData.Data and vData.Data.Name) or (vData.Name) or tostring(vId)
+                            else
+                                itemVariant = tostring(variantRaw)
+                            end
+                        else
+                            itemVariant = tostring(variantRaw)
+                        end
+                    end
+                    -- Skip jika masih "table:" format
+                    if itemVariant:find("^table:") then itemVariant = "" end
                 end
 
 
