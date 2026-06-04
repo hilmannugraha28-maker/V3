@@ -413,19 +413,21 @@ local function sendToDiscord(entries)
                     table.insert(nonProfit, e)
                 end
             end
-        else
-            if e.rap and e.rap >= MIN_RAP then
-                local profit = e.rap - e.price
-                if e.price < e.rap and profit >= MIN_PROFIT then
-                    e._filterTag = nil
-                    table.insert(filtered, e)
-                else
-                    -- Harga < RAP tapi profit kecil → non-profit (hanya jika masih save)
-                    if WEBHOOK_INFO ~= "" and e.price < e.rap then
-                        table.insert(nonProfit, e)
-                    end
+        elseif e.rap and e.rap >= MIN_RAP then
+            local profit = e.rap - e.price
+            if e.price < e.rap and profit >= MIN_PROFIT then
+                e._filterTag = nil
+                table.insert(filtered, e)
+            else
+                -- Harga < RAP tapi profit kecil → non-profit (hanya jika masih save)
+                if WEBHOOK_INFO ~= "" and e.price < e.rap then
+                    table.insert(nonProfit, e)
                 end
             end
+        elseif ALLOWED_TYPES[e.itemType or ""] then
+            -- Item dari ALLOWED_TYPES tanpa RAP → tetap tampilkan
+            e._filterTag = nil
+            table.insert(filtered, e)
         end
     end
 
