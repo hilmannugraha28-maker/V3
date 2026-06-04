@@ -427,51 +427,52 @@ local function sendToDiscord(entries)
         if wNum and wNum > 0 then
             local wDisplay
             if wNum >= 1000000 then
-                wDisplay = ("%.1fkt"):format(wNum / 1000000)   -- kiloton
+                wDisplay = ("%.1fkt"):format(wNum / 1000000)
             elseif wNum >= 1000 then
-                wDisplay = ("%.2ft"):format(wNum / 1000)       -- ton
+                wDisplay = ("%.2ft"):format(wNum / 1000)
             else
-                wDisplay = ("%.2fkg"):format(wNum)             -- kg biasa
+                wDisplay = ("%.2fkg"):format(wNum)
             end
-            weightStr = " | " .. wDisplay
+            weightStr = wDisplay
         end
 
-        local variantStr = (e.variant and e.variant ~= "") and ("\n✨ Variant: **" .. e.variant .. "**") or ""
+        local variantStr = (e.variant and e.variant ~= "") and ("Variant: **" .. e.variant .. "**\n") or ""
 
-        local rapLine
-        local profitSign = 0  -- 0 = unknown, 1 = positive, -1 = negative
+        -- Build RAP & Save/Loss lines
+        local rapLine = ""
+        local saveLine = ""
+        local profitSign = 0
         if e._filterTag then
-            rapLine = ("Filter: harga ≤ %s T"):format(e._filterTag)
+            rapLine = ("Filter: **%s T**"):format(e._filterTag)
             profitSign = 1
         elseif e.rap and e.rap > 0 then
             local profit = e.rap - e.price
             local pct    = math.floor((e.price / e.rap) * 100)
+            rapLine = ("**RAP:** **%s** (%d%%)"):format(commas(e.rap), pct)
             if profit >= 0 then
                 profitSign = 1
-                rapLine = ("RAP: **%s T** | Profit: **+%s T** (%d%%)"):format(
-                    commas(e.rap), commas(profit), pct)
+                saveLine = ("**Save:** **%s Tokens**"):format(commas(profit))
             else
                 profitSign = -1
-                rapLine = ("RAP: **%s T** | Minus: **-%s T** (%d%%)"):format(
-                    commas(e.rap), commas(math.abs(profit)), pct)
+                saveLine = ("**Loss:** **-%s Tokens**"):format(commas(math.abs(profit)))
             end
         else
-            rapLine = "RAP: -"
+            rapLine = "**RAP:** -"
         end
 
-        local icon = profitSign >= 0 and "🔥" or "📉"
+        local lines = {}
+        table.insert(lines, ("**Nama:** %s%s"):format(e.name, sourceStr))
+        table.insert(lines, ("**Harga:** **%s Tokens**"):format(commas(e.price)))
+        table.insert(lines, ("**Seller:** %s"):format(e.seller))
+        table.insert(lines, rapLine)
+        if saveLine ~= "" then table.insert(lines, saveLine) end
+        if variantStr ~= "" then table.insert(lines, ("**Variant:** **%s**"):format(e.variant)) end
+        table.insert(lines, ("**Tier:** %s"):format(e.tierName))
+        if weightStr ~= "" then table.insert(lines, ("**Weight:** %s"):format(weightStr)) end
 
         return {
-            name  = ("%s #%d %s%s"):format(icon, i, e.name, sourceStr),
-            value = (
-                "Harga: **%s T**\n" ..
-                "%s" ..
-                "%s\n" ..
-                "%s | 🏷️ %s%s"
-            ):format(
-                commas(e.price), rapLine, variantStr,
-                e.seller, e.tierName, weightStr
-            ),
+            name  = ("🔥 #%d SNIPE"):format(i),
+            value = table.concat(lines, "\n"),
             inline = true,
         }
     end
@@ -673,7 +674,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -8, 1, 0)
 TitleLabel.Position = UDim2.new(0, 8, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "🎣 Fish It Sniper"
+TitleLabel.Text = "Fish It Sniper"
 TitleLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.TextSize = 12
@@ -696,7 +697,7 @@ local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -12, 0, 16)
 StatusLabel.Position = UDim2.new(0, 6, 0, 32)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "⏹ Idle"
+StatusLabel.Text = "Idle"
 StatusLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 11
@@ -719,7 +720,7 @@ Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 6)
 
 local function setBtn(running)
     if running then
-        Btn.Text = "⏹  STOP"
+        Btn.Text = "STOP"
         Btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         stroke.Color = Color3.fromRGB(200, 50, 50)
         StatusLabel.TextColor3 = Color3.fromRGB(100, 220, 120)
@@ -728,7 +729,7 @@ local function setBtn(running)
         Btn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
         stroke.Color = Color3.fromRGB(80, 80, 120)
         StatusLabel.TextColor3 = Color3.fromRGB(140, 140, 160)
-        StatusLabel.Text = "⏹ Idle"
+        StatusLabel.Text = "Idle"
     end
 end
 
@@ -780,14 +781,14 @@ end
 --  SNIPER RUNNER
 -- ────────────────────────────────
 local function runSniper()
-    StatusLabel.Text = ("⏳ Tunggu %ds..."):format(SCAN_WAIT)
+    StatusLabel.Text = ("Tunggu %ds..."):format(SCAN_WAIT)
     print("[Sniper] Fish It Plaza Booth Sniper v8.0")
     print("[Sniper] Scanner : " .. lp.Name)
     print("[Sniper] Server  : " .. jobId:sub(1, 12))
 
     -- Pastikan Replion sudah tersedia (retry sampai 30 detik)
     if not Replion then
-        StatusLabel.Text = "⏳ Tunggu Replion..."
+        StatusLabel.Text = "Tunggu Replion..."
         for i = 1, 30 do
             if not _sniperRunning then return end
             pcall(function() Replion = require(ReplicatedStorage.Packages.Replion) end)
@@ -795,7 +796,7 @@ local function runSniper()
             task.wait(1)
         end
         if not Replion then
-            StatusLabel.Text = "❌ Replion gagal load!"
+            StatusLabel.Text = "Replion gagal load!"
             warn("[Sniper] Replion tidak tersedia. Pastikan di Trade Plaza!")
             _sniperRunning = false
             setBtn(false)
@@ -806,14 +807,14 @@ local function runSniper()
     -- Tunggu sebelum scan
     for i = SCAN_WAIT, 1, -1 do
         if not _sniperRunning then return end
-        StatusLabel.Text = ("⏳ Scan dalam %ds..."):format(i)
+        StatusLabel.Text = ("Scan dalam %ds..."):format(i)
         task.wait(1)
     end
 
     if not _sniperRunning then return end
 
     -- Scan listing
-    StatusLabel.Text = "🔍 Scanning..."
+    StatusLabel.Text = "Scanning..."
     print("[Sniper] Memulai scan listing...")
     local entries = scanAllListings()
 
@@ -821,10 +822,10 @@ local function runSniper()
 
     -- Kirim ke Discord
     if #entries > 0 then
-        StatusLabel.Text = ("📨 Kirim %d listing..."):format(#entries)
+        StatusLabel.Text = ("Kirim %d listing..."):format(#entries)
         sendToDiscord(entries)
     else
-        StatusLabel.Text = "⚠️ Tidak ada listing"
+        StatusLabel.Text = "Tidak ada listing"
         print("[Sniper] Tidak ada listing ditemukan.")
     end
 
@@ -832,14 +833,14 @@ local function runSniper()
 
     -- Server hop
     if HOP then
-        StatusLabel.Text = "🔀 Server hop..."
+        StatusLabel.Text = "Server hop..."
         print("[Sniper] Pindah server...")
         task.wait(2)
 
         -- hop loop dengan cek flag
         local function hopLoop()
             while _sniperRunning do
-                StatusLabel.Text = "🔍 Cari server..."
+                StatusLabel.Text = "Cari server..."
                 print("[HOP] Mencari server...")
                 local list, cursor = {}, ""
                 for _ = 1, 5 do
@@ -859,7 +860,7 @@ local function runSniper()
                 end
 
                 if #list == 0 then
-                    StatusLabel.Text = "❌ Tidak ada server"
+                    StatusLabel.Text = "Tidak ada server"
                     if not _sniperRunning then return end
                     task.wait(30)
                 else
@@ -869,7 +870,7 @@ local function runSniper()
                         list[i], list[j] = list[j], list[i]
                     end
                     local picked = list[1]
-                    StatusLabel.Text = ("🔀 Hop random → %d players"):format(picked.players)
+                    StatusLabel.Text = ("Hop random > %d players"):format(picked.players)
                     print(("[HOP] Pilih server random: %s (%d players)"):format(picked.id:sub(1,8), picked.players))
 
                     local failed, conn = false, nil
@@ -915,7 +916,7 @@ Btn.MouseButton1Click:Connect(function()
         _sniperThread = task.spawn(function()
             local ok, err = pcall(runSniper)
             if not ok then
-                StatusLabel.Text = "❌ Error!"
+                StatusLabel.Text = "Error!"
                 warn("[Sniper] Error: " .. tostring(err))
             end
             if _sniperRunning then
@@ -936,7 +937,7 @@ task.delay(1, function()
     _sniperThread = task.spawn(function()
         local ok, err = pcall(runSniper)
         if not ok then
-            StatusLabel.Text = "❌ Error!"
+            StatusLabel.Text = "Error!"
             warn("[Sniper] Error: " .. tostring(err))
         end
         if _sniperRunning then
