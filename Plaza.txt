@@ -1,1 +1,0 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/hilmannugraha28-maker/V3/refs/heads/main/fishit.lua"))()
