@@ -28,8 +28,17 @@ local SNIPE_ONLY  = true  -- hanya kirim listing yang harga < RAP
 local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai ini
                           -- set ke 0 untuk tampilkan semua snipe
-local MIN_TIER    = 5     -- tier minimum yang ditampilkan (5=Legendary, 6=Mythic, 7=Secret)
-                          -- item di CUSTOM_FILTERS tetap ditampilkan meski tier rendah
+local MIN_TIER    = 0     -- tier minimum (0 = tampilkan semua tier)
+
+-- Kategori item yang ditampilkan (kosongkan {} untuk tampilkan semua)
+-- Nama harus sesuai dengan itemType di game
+local ALLOWED_TYPES = {
+    ["Rod"] = true,
+    ["Boat"] = true,
+    ["Pet"] = true,
+    ["Halo"] = true,
+    ["Emote"] = true,
+}
 
 -- Filter harga manual per item (nama item = harga maksimal yang mau ditampilkan)
 -- Item di sini TIDAK perlu punya RAP — langsung pakai batas harga manual
@@ -75,24 +84,7 @@ local BLOCKED_ITEMS = (function(list)
     for _, v in ipairs(list) do t[v:lower()] = true end
     return t
 end)({
-    "Blob Shark",            "Giant Squid",           "Cryoshade Glider",
-    "Gladiator Shark",       "Blackhole Sea Dragon",  "Skeleton Narwhal",
-    "Bucket Fish",           "Neonite Fish",           "Fluorivane",
-    "Elshark Gran Maja",     "Coney Fish",            "Blobby Shieldfish",
-    "Frostbite Leviathan",   "Primal Lobster",        "Emerald Winter Whale",
-    "Winter Frost Shark",    "Strawberry Orca",       "1x1x1x1 Comet Shark",
-    "Drip Walrus",           "Bonemaw Tyrant",        "Bone Whale",
-    "Bloodmoon Whale",       "Classic Glass Octopus", "Ghost Shark",
-    "Coral Whale",           "Holiday Turtle Plushie","Fish Fossil",
-    "Treasure Crab",         "Violet",                "Aurelion",
-    "Elpirate Gran Maja",    "Shark",                 "Great Whale",
-    "Queen Crab",            "King Crab",             "Worm Fish",
-    "Depthseeker Ray",       "Flame Tyrant",          "Scare",
-    "Runic Enchant Stone",
-    "Cute Octopus",          "Pink",                  "Panther Eel",
-    "Hybodus",               "Sheriff Sawfish",       "Kraken",
-    "Frostborn",             "Thresher Shark",        "Sunfang Nautilus",
-    "Purple Retro Squid",
+    -- Tambah nama item yang ingin diblokir di sini
 })
 
 
@@ -353,6 +345,15 @@ local function sendToDiscord(entries)
         -- Skip item yang diblokir (case-insensitive)
         local nameLower = e.name:lower()
         if BLOCKED_ITEMS[nameLower] then continue end
+
+        -- Skip jika kategori/itemType tidak ada di ALLOWED_TYPES (kecuali CUSTOM_FILTERS)
+        if next(ALLOWED_TYPES) then
+            local hasCustom2 = false
+            for itemName, _ in pairs(CUSTOM_FILTERS) do
+                if nameLower == itemName:lower() then hasCustom2 = true; break end
+            end
+            if not hasCustom2 and not ALLOWED_TYPES[e.itemType or ""] then continue end
+        end
 
         -- Skip jika tier di bawah minimum (kecuali item ada di CUSTOM_FILTERS)
         local hasCustom = false
