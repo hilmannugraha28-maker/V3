@@ -419,8 +419,8 @@ local function sendToDiscord(entries)
                 e._filterTag = nil
                 table.insert(filtered, e)
             else
-                -- Harga < RAP tapi profit kecil → non-profit (hanya jika masih save)
-                if WEBHOOK_INFO ~= "" and e.price < e.rap then
+                -- Profit kecil atau loss → non-profit
+                if WEBHOOK_INFO ~= "" then
                     table.insert(nonProfit, e)
                 end
             end
