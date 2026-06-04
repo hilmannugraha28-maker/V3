@@ -33,10 +33,10 @@ local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai 
 -- Item di sini TIDAK perlu punya RAP — langsung pakai batas harga manual
 -- Item yang tidak ada di sini tetap pakai aturan price < RAP seperti biasa
 local CUSTOM_FILTERS = {
-    ["Megalodon"]      = 500,    -- tampilkan Megalodon jika harga <= 500
-    ["Axolotl"]        = 10000,  -- tampilkan Axolotl jika harga <= 10000
-    ["Capybara"]       = 200,    -- tampilkan Capybara jika harga <= 200
-    ["Penguin"]        = 500,    -- tampilkan Penguin jika harga <= 500
+    ["Megalodon"]      = 700,    -- tampilkan Megalodon jika harga <= 700
+    ["Axolotl"]        = 6000,   -- tampilkan Axolotl jika harga <= 6000
+    ["Capybara"]       = 350,    -- tampilkan Capybara jika harga <= 350
+    ["Penguin"]        = 800,    -- tampilkan Penguin jika harga <= 800
 
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
@@ -420,9 +420,12 @@ local function sendToDiscord(entries)
 
     local joinUrl  = ("https://www.roblox.com/games/start?placeId=%d&gameInstanceId=%s"):format(placeId, jobId)
     local tpScript = ('game:GetService("TeleportService"):TeleportToPlaceInstance(%d, "%s", game.Players.LocalPlayer)'):format(placeId, jobId)
-    local footer   = ("Fish It Sniper v8 | @%s | %s"):format(lp.Name, os.date("%d/%m/%Y %H:%M"))
+    local footer   = ("Fish It Sniper v8 | @%s | PlaceId: %d | %s"):format(lp.Name, placeId, os.date("%d/%m/%Y %H:%M"))
     local serverStr   = jobId:sub(1, 8)
     local playerCount = #Players:GetPlayers()
+    local sniperTitle = placeId == 121864768012064 and "FISH IT SNIPER"
+        or placeId == 79378095465365 and "PLAZA SNIPER"
+        or "Sniper"
 
     local function buildField(i, e)
         local sourceStr  = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
@@ -516,7 +519,7 @@ local function sendToDiscord(entries)
             for i, e in ipairs(inServer) do
                 table.insert(fields1, buildField(i, e))
             end
-            sendEmbed("Plaza Sniper", 0xED4245, desc1, fields1)
+            sendEmbed(sniperTitle .. " | Profit", 0xED4245, desc1, fields1)
         end
 
         if #offServer > 0 then
@@ -527,7 +530,7 @@ local function sendToDiscord(entries)
             for i, e in ipairs(offServer) do
                 table.insert(fields2, buildField(i, e))
             end
-            sendEmbed("Plaza Sniper", 0x5865F2, desc2, fields2)
+            sendEmbed(sniperTitle .. " | Profit", 0x5865F2, desc2, fields2)
         end
     else
         print("[Discord] Tidak ada listing profit — skip embed profit.")
@@ -561,7 +564,7 @@ local function sendToDiscord(entries)
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
         end
-        sendEmbed("Non Profit", 0xED4245, desc3, fields3, WEBHOOK_INFO)
+        sendEmbed(sniperTitle .. " | Non Profit", 0xED4245, desc3, fields3, WEBHOOK_INFO)
     end
 
 
