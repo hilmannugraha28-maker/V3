@@ -869,14 +869,49 @@ local function runSniper()
             while _sniperRunning do
                 StatusLabel.Text = "Cari server..."
                 print("[HOP] Mencari server...")
+                local hopPlaceId = placeId
+                -- Jika placeId Fish It (sub-place), coba gunakan game.GameId untuk cari starting place
+                if placeId == 121864768012064 then
+                    pcall(function()
+                        local uniUrl = ("https://apis.roblox.com/universes/v1/places/%d/universe"):format(placeId)
+                        local uOk, uRes = pcall(httpReq, { Url = uniUrl, Method = "GET" })
+                        if uOk and uRes and uRes.Body then
+                            local uData = HttpService:JSONDecode(uRes.Body)
+                            if uData and uData.universeId then
+                                local rpUrl = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=10"):format(placeId)
+                                local rpOk, rpRes = pcall(httpReq, { Url = rpUrl, Method = "GET" })
+                                if rpOk and rpRes and rpRes.Body then
+                                    local rpData = HttpService:JSONDecode(rpRes.Body)
+                                    if rpData and rpData.data and #rpData.data == 0 then
+                                        -- PlaceId tidak punya server publik, coba pakai universeId
+                                        local startUrl = ("https://games.roblox.com/v1/games?universeIds=%d"):format(uData.universeId)
+                                        local sOk, sRes = pcall(httpReq, { Url = startUrl, Method = "GET" })
+                                        if sOk and sRes and sRes.Body then
+                                            local sData = HttpService:JSONDecode(sRes.Body)
+                                            if sData and sData.data and sData.data[1] then
+                                                local rootId = sData.data[1].rootPlaceId
+                                                if rootId and rootId ~= placeId then
+                                                    hopPlaceId = rootId
+                                                    print(("[HOP] Menggunakan rootPlaceId: %d"):format(rootId))
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+
                 local list, cursor = {}, ""
                 for _ = 1, 5 do
                     if not _sniperRunning then return end
-                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&cursor=%s"):format(placeId, cursor)
+                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&cursor=%s"):format(hopPlaceId, cursor)
                     local ok, res = pcall(httpReq, { Url = url, Method = "GET" })
                     if not ok or not res then break end
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
                     if not ok2 or not data or not data.data then break end
+                    print(("[HOP] Page: %d server dari API (placeId: %d)"):format(#data.data, hopPlaceId))
                     for _, s in ipairs(data.data) do
                         if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
                             table.insert(list, { id = s.id, players = s.playing or 0 })
