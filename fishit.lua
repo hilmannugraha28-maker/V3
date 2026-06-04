@@ -28,17 +28,8 @@ local SNIPE_ONLY  = true  -- hanya kirim listing yang harga < RAP
 local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai ini
                           -- set ke 0 untuk tampilkan semua snipe
-local MIN_TIER    = 0     -- tier minimum (0 = tampilkan semua tier)
-
--- Kategori item yang ditampilkan (kosongkan {} untuk tampilkan semua)
--- Nama harus sesuai dengan itemType di game
-local ALLOWED_TYPES = {
-    ["Rod"] = true,
-    ["Boat"] = true,
-    ["Pet"] = true,
-    ["Halo"] = true,
-    ["Emote"] = true,
-}
+local MIN_TIER    = 5     -- tier minimum yang ditampilkan (5=Legendary, 6=Mythic, 7=Secret)
+                          -- item di CUSTOM_FILTERS tetap ditampilkan meski tier rendah
 
 -- Filter harga manual per item (nama item = harga maksimal yang mau ditampilkan)
 -- Item di sini TIDAK perlu punya RAP — langsung pakai batas harga manual
@@ -55,8 +46,6 @@ local CUSTOM_FILTERS = {
     ["Blossom"]        = 200,    -- tampilkan Blossom jika harga <= 200
     ["Alpha Floaty"]   = 18000,  -- tampilkan Alpha Floaty jika harga <= 18000
     ["Frozen Boat"]    = 10000,  -- tampilkan Frozen Boat jika harga <= 10000
-    ["Midair Relax"]   = 250,    -- tampilkan Midair Relax jika harga <= 250
-    ["Kitty Halo"]     = 250,    -- tampilkan Kitty Halo jika harga <= 250
 
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
@@ -84,7 +73,24 @@ local BLOCKED_ITEMS = (function(list)
     for _, v in ipairs(list) do t[v:lower()] = true end
     return t
 end)({
-    -- Tambah nama item yang ingin diblokir di sini
+    "Blob Shark",            "Giant Squid",           "Cryoshade Glider",
+    "Gladiator Shark",       "Blackhole Sea Dragon",  "Skeleton Narwhal",
+    "Bucket Fish",           "Neonite Fish",           "Fluorivane",
+    "Elshark Gran Maja",     "Coney Fish",            "Blobby Shieldfish",
+    "Frostbite Leviathan",   "Primal Lobster",        "Emerald Winter Whale",
+    "Winter Frost Shark",    "Strawberry Orca",       "1x1x1x1 Comet Shark",
+    "Drip Walrus",           "Bonemaw Tyrant",        "Bone Whale",
+    "Bloodmoon Whale",       "Classic Glass Octopus", "Ghost Shark",
+    "Coral Whale",           "Holiday Turtle Plushie","Fish Fossil",
+    "Treasure Crab",         "Violet",                "Aurelion",
+    "Elpirate Gran Maja",    "Shark",                 "Great Whale",
+    "Queen Crab",            "King Crab",             "Worm Fish",
+    "Depthseeker Ray",       "Flame Tyrant",          "Scare",
+    "Runic Enchant Stone",
+    "Cute Octopus",          "Pink",                  "Panther Eel",
+    "Hybodus",               "Sheriff Sawfish",       "Kraken",
+    "Frostborn",             "Thresher Shark",        "Sunfang Nautilus",
+    "Purple Retro Squid",
 })
 
 
@@ -294,30 +300,7 @@ local function scanAllListings()
                 local variantRaw = meta.VariantId or meta.variantId
                     or meta.Variant or meta.variant
                 if variantRaw and variantRaw ~= "" and variantRaw ~= 0 then
-                    if type(variantRaw) == "table" then
-                        -- Coba ambil nama/id dari dalam table
-                        local vName = variantRaw.Name or variantRaw.name
-                            or variantRaw.Id or variantRaw.id
-                        if vName then
-                            itemVariant = tostring(vName)
-                        end
-                    elseif type(variantRaw) == "number" or type(variantRaw) == "string" then
-                        -- Coba resolve variant ID ke nama via GetVariants
-                        local vId = tonumber(variantRaw)
-                        if vId then
-                            local vOk, allVariants = pcall(function() return ItemUtility.GetVariants() end)
-                            if vOk and allVariants and allVariants[vId] then
-                                local vData = allVariants[vId]
-                                itemVariant = (vData.Data and vData.Data.Name) or (vData.Name) or tostring(vId)
-                            else
-                                itemVariant = tostring(variantRaw)
-                            end
-                        else
-                            itemVariant = tostring(variantRaw)
-                        end
-                    end
-                    -- Skip jika masih "table:" format
-                    if itemVariant:find("^table:") then itemVariant = "" end
+                    itemVariant = tostring(variantRaw)
                 end
 
 
@@ -369,15 +352,6 @@ local function sendToDiscord(entries)
         local nameLower = e.name:lower()
         if BLOCKED_ITEMS[nameLower] then continue end
 
-        -- Skip jika kategori/itemType tidak ada di ALLOWED_TYPES (kecuali CUSTOM_FILTERS)
-        if next(ALLOWED_TYPES) then
-            local hasCustom2 = false
-            for itemName, _ in pairs(CUSTOM_FILTERS) do
-                if nameLower == itemName:lower() then hasCustom2 = true; break end
-            end
-            if not hasCustom2 and not ALLOWED_TYPES[e.itemType or ""] then continue end
-        end
-
         -- Skip jika tier di bawah minimum (kecuali item ada di CUSTOM_FILTERS)
         local hasCustom = false
         for itemName, _ in pairs(CUSTOM_FILTERS) do
@@ -413,21 +387,19 @@ local function sendToDiscord(entries)
                     table.insert(nonProfit, e)
                 end
             end
-        elseif e.rap and e.rap >= MIN_RAP then
-            local profit = e.rap - e.price
-            if e.price < e.rap and profit >= MIN_PROFIT then
-                e._filterTag = nil
-                table.insert(filtered, e)
-            else
-                -- Profit kecil atau loss → non-profit
-                if WEBHOOK_INFO ~= "" then
-                    table.insert(nonProfit, e)
+        else
+            if e.rap and e.rap >= MIN_RAP then
+                local profit = e.rap - e.price
+                if e.price < e.rap and profit >= MIN_PROFIT then
+                    e._filterTag = nil
+                    table.insert(filtered, e)
+                else
+                    -- Harga < RAP tapi profit kecil → non-profit (hanya jika masih save)
+                    if WEBHOOK_INFO ~= "" and e.price < e.rap then
+                        table.insert(nonProfit, e)
+                    end
                 end
             end
-        elseif ALLOWED_TYPES[e.itemType or ""] then
-            -- Item dari ALLOWED_TYPES tanpa RAP → tetap tampilkan
-            e._filterTag = nil
-            table.insert(filtered, e)
         end
     end
 
