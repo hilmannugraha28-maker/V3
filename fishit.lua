@@ -28,6 +28,8 @@ local SNIPE_ONLY  = true  -- hanya kirim listing yang harga < RAP
 local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai ini
                           -- set ke 0 untuk tampilkan semua snipe
+local MIN_TIER    = 5     -- tier minimum yang ditampilkan (5=Legendary, 6=Mythic, 7=Secret)
+                          -- item di CUSTOM_FILTERS tetap ditampilkan meski tier rendah
 
 -- Filter harga manual per item (nama item = harga maksimal yang mau ditampilkan)
 -- Item di sini TIDAK perlu punya RAP — langsung pakai batas harga manual
@@ -342,6 +344,13 @@ local function sendToDiscord(entries)
         -- Skip item yang diblokir (case-insensitive)
         local nameLower = e.name:lower()
         if BLOCKED_ITEMS[nameLower] then continue end
+
+        -- Skip jika tier di bawah minimum (kecuali item ada di CUSTOM_FILTERS)
+        local hasCustom = false
+        for itemName, _ in pairs(CUSTOM_FILTERS) do
+            if nameLower == itemName:lower() then hasCustom = true; break end
+        end
+        if not hasCustom and e.tier < MIN_TIER then continue end
 
         -- Skip jika item wajib punya variant tapi tidak ada
         if REQUIRE_VARIANT[e.name] or REQUIRE_VARIANT[e.name:lower()] then
