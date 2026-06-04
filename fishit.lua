@@ -39,6 +39,13 @@ local CUSTOM_FILTERS = {
     ["Axolotl"]        = 6000,   -- tampilkan Axolotl jika harga <= 6000
     ["Capybara"]       = 350,    -- tampilkan Capybara jika harga <= 350
     ["Penguin"]        = 800,    -- tampilkan Penguin jika harga <= 800
+    ["Aquatic"]        = 200,    -- tampilkan Aquatic jika harga <= 200
+    ["Angelic Rod"]    = 200,    -- tampilkan Angelic Rod jika harga <= 200
+    ["Cute Rod"]       = 200,    -- tampilkan Cute Rod jika harga <= 200
+    ["Havenly"]        = 200,    -- tampilkan Havenly jika harga <= 200
+    ["Blossom"]        = 200,    -- tampilkan Blossom jika harga <= 200
+    ["Alpha Floaty"]   = 18000,  -- tampilkan Alpha Floaty jika harga <= 18000
+    ["Frozen Boat"]    = 10000,  -- tampilkan Frozen Boat jika harga <= 10000
 
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
@@ -435,6 +442,8 @@ local function sendToDiscord(entries)
     local sniperTitle = placeId == 121864768012064 and "FISH IT SNIPER"
         or placeId == 79378095465365 and "PLAZA SNIPER"
         or "Sniper"
+    local sniperColor = placeId == 121864768012064 and 0x2ECC71  -- hijau untuk Fish It
+        or 0xED4245                                              -- merah untuk Plaza / lainnya
 
     local function buildField(i, e)
         local sourceStr  = e.source ~= "Booth" and (" [" .. e.source .. "]") or ""
@@ -528,7 +537,7 @@ local function sendToDiscord(entries)
             for i, e in ipairs(inServer) do
                 table.insert(fields1, buildField(i, e))
             end
-            sendEmbed(sniperTitle .. " | Profit", 0xED4245, desc1, fields1)
+            sendEmbed(sniperTitle .. " | Profit", sniperColor, desc1, fields1)
         end
 
         if #offServer > 0 then
@@ -539,7 +548,7 @@ local function sendToDiscord(entries)
             for i, e in ipairs(offServer) do
                 table.insert(fields2, buildField(i, e))
             end
-            sendEmbed(sniperTitle .. " | Profit", 0x5865F2, desc2, fields2)
+            sendEmbed(sniperTitle .. " | Profit", sniperColor, desc2, fields2)
         end
     else
         print("[Discord] Tidak ada listing profit — skip embed profit.")
@@ -573,7 +582,7 @@ local function sendToDiscord(entries)
         for i, e in ipairs(top25) do
             table.insert(fields3, buildField(i, e))
         end
-        sendEmbed(sniperTitle .. " | Non Profit", 0xED4245, desc3, fields3, WEBHOOK_INFO)
+        sendEmbed(sniperTitle .. " | Non Profit", sniperColor, desc3, fields3, WEBHOOK_INFO)
     end
 
 
