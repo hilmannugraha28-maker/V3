@@ -78,6 +78,9 @@ end)({
     "Queen Crab",            "King Crab",             "Worm Fish",
     "Depthseeker Ray",       "Flame Tyrant",          "Scare",
     "Runic Enchant Stone",
+    "Cute Octopus",          "Pink",                  "Panther Eel",
+    "Hybodus",               "Sheriff Sawfish",       "Robot Kraken",
+    "Frostborn",             "Thresher Shark",        "Sunfang Nautilus",
 })
 
 
