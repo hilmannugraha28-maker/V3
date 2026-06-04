@@ -878,10 +878,8 @@ local function runSniper()
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
                     if not ok2 or not data or not data.data then break end
                     for _, s in ipairs(data.data) do
-                        local playing = s.playing or 0
-                        local maxPlayers = s.maxPlayers or 20
-                        if s.id and s.id ~= jobId and playing >= MIN_PLAYER and playing < maxPlayers then
-                            table.insert(list, { id = s.id, players = playing })
+                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
+                            table.insert(list, { id = s.id, players = s.playing or 0 })
                         end
                     end
                     cursor = data.nextPageCursor or ""
