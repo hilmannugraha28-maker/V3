@@ -23,7 +23,7 @@ local WEBHOOK_INFO = "https://discord.com/api/webhooks/1510643283032801290/anFd_
 local SCAN_WAIT  = 8     -- detik tunggu sebelum scan
 local HOP        = true  -- aktifkan auto server hop
 local HOP_DELAY  = 3
-local MIN_PLAYER  = 5     -- min player per server saat hop
+local MIN_PLAYER  = 3     -- min player per server saat hop
 local SNIPE_ONLY  = true  -- hanya kirim listing yang harga < RAP
 local MIN_RAP     = 1     -- abaikan item dengan RAP 0 / tidak diketahui
 local MIN_PROFIT  = 100   -- hanya tampilkan jika profit (RAP - harga) >= nilai ini
@@ -868,9 +868,8 @@ local function runSniper()
                     if not ok or not res then break end
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
                     if not ok2 or not data or not data.data then break end
-                    local maxPlayer = (placeId == 121864768012064) and 18 or math.huge
                     for _, s in ipairs(data.data) do
-                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER and (s.playing or 0) <= maxPlayer then
+                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
                             table.insert(list, { id = s.id, players = s.playing or 0 })
                         end
                     end
