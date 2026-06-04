@@ -872,14 +872,16 @@ local function runSniper()
                 local list, cursor = {}, ""
                 for _ = 1, 5 do
                     if not _sniperRunning then return end
-                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&cursor=%s"):format(placeId, cursor)
+                    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100&cursor=%s"):format(placeId, cursor)
                     local ok, res = pcall(httpReq, { Url = url, Method = "GET" })
                     if not ok or not res then break end
                     local ok2, data = pcall(HttpService.JSONDecode, HttpService, res.Body or "")
                     if not ok2 or not data or not data.data then break end
                     for _, s in ipairs(data.data) do
-                        if s.id and s.id ~= jobId and (s.playing or 0) >= MIN_PLAYER then
-                            table.insert(list, { id = s.id, players = s.playing or 0 })
+                        local playing = s.playing or 0
+                        local maxPlayers = s.maxPlayers or 20
+                        if s.id and s.id ~= jobId and playing >= MIN_PLAYER and playing < maxPlayers then
+                            table.insert(list, { id = s.id, players = playing })
                         end
                     end
                     cursor = data.nextPageCursor or ""
