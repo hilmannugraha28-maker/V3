@@ -37,7 +37,7 @@ local MIN_TIER    = 5     -- tier minimum yang ditampilkan (5=Legendary, 6=Mythi
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 700,    -- tampilkan Megalodon jika harga <= 700
     ["Axolotl"]        = 4000,   -- tampilkan Axolotl jika harga <= 6000
-    ["Capybara"]       = 350,    -- tampilkan Capybara jika harga <= 350
+    ["Capybara"]       = 400,    -- tampilkan Capybara jika harga <= 350
     ["Penguin"]        = 800,    -- tampilkan Penguin jika harga <= 800
     ["Aquatic"]        = 200,    -- tampilkan Aquatic jika harga <= 200
     ["Angelic Rod"]    = 200,    -- tampilkan Angelic Rod jika harga <= 200
