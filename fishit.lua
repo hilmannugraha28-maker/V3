@@ -36,7 +36,7 @@ local MIN_TIER    = 5     -- tier minimum yang ditampilkan (5=Legendary, 6=Mythi
 -- Item yang tidak ada di sini tetap pakai aturan price < RAP seperti biasa
 local CUSTOM_FILTERS = {
     ["Megalodon"]      = 700,    -- tampilkan Megalodon jika harga <= 700
-    ["Axolotl"]        = 6000,   -- tampilkan Axolotl jika harga <= 6000
+    ["Axolotl"]        = 4000,   -- tampilkan Axolotl jika harga <= 6000
     ["Capybara"]       = 350,    -- tampilkan Capybara jika harga <= 350
     ["Penguin"]        = 800,    -- tampilkan Penguin jika harga <= 800
     ["Aquatic"]        = 200,    -- tampilkan Aquatic jika harga <= 200
@@ -46,9 +46,9 @@ local CUSTOM_FILTERS = {
     ["Blossom"]        = 200,    -- tampilkan Blossom jika harga <= 200
     ["Alpha Floaty"]   = 18000,  -- tampilkan Alpha Floaty jika harga <= 18000
     ["Frozen Boat"]    = 10000,  -- tampilkan Frozen Boat jika harga <= 10000
-    ["Midair Relax"]   = 250,    -- tampilkan Midair Relax jika harga <= 250
-    ["Kitty Halo"]     = 250,    -- tampilkan Kitty Halo jika harga <= 250
-	["Pirate Banjo"]   = 700,
+    ["Midair Relax"]   = 200,    -- tampilkan Midair Relax jika harga <= 250
+    ["Kitty Halo"]     = 200,    -- tampilkan Kitty Halo jika harga <= 250
+	["Pirate Banjo"]   = 250,
 
     -- ["Undead Guitar"] = 5000,
     -- ["Holy Rod"]      = 200,
