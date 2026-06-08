@@ -48,7 +48,6 @@ local CUSTOM_FILTERS = {
     ["Frozen Boat"]    = 10000,  -- tampilkan Frozen Boat jika harga <= 10000
     ["Midair Relax"]   = 200,    -- tampilkan Midair Relax jika harga <= 250
     ["Kitty Halo"]     = 200,    -- tampilkan Kitty Halo jika harga <= 250
-	["Pirate Banjo"]   = 250,
 	["Undead Guitar"]  = 6500,
 
     -- ["Undead Guitar"] = 5000,
